@@ -15,5 +15,7 @@ setup(
         "License :: OSI Approved :: MIT License",
         "Topic :: Text Processing",
     ],
-    install_requires=[]
+    install_requires=[
+        "Flask",
+    ]
 )

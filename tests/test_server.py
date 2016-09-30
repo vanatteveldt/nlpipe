@@ -1,6 +1,5 @@
 from tempfile import TemporaryDirectory
 
-import requests
 from nlpipe.client import FSClient, get_id
 from nlpipe.restserver import app
 from nose.tools import assert_equal
