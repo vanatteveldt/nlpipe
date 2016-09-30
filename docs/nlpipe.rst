@@ -12,6 +12,22 @@ nlpipe.client module
     :undoc-members:
     :show-inheritance:
 
+nlpipe.restserver module
+------------------------
+
+.. automodule:: nlpipe.restserver
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+nlpipe.worker module
+--------------------
+
+.. automodule:: nlpipe.worker
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
