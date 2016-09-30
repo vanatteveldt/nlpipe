@@ -1,37 +1,44 @@
-# nlpipe
+# NLPipe
 Client/server based NLP Pipelining
+
+This is a simple, filesystem-based format- and progress agnostic setup for running document processing.
+The intended usage is to make it easy to package and distribute different parsers, preprocessors etc.,
+and call them from other programs such as R or python without worrying about dependencies, installation, etc. 
 
 Components:
 
-- Server
+- Storage
+- HTTP Server
+- Client bindings
 - Workers
-- Client
 
-Server
+Storage directory layout
 ===
 
-Uses file system to manage task queue and results cache. 
+Ths server uses file system to manage task queue and results cache. 
+Each task (e.g. corenlp_lemmatize) contains subfolders containing the documents
 
-File system layout e.g.
 ```
 - <task>
   - queue
   - in_process
-  - result
+  - results
+  - errors
 ```
 
-Each folder contains files with hash of input text as filename
-
-Interface
-====
-either direct filesystem access or HTTP REST.
-
 Process flow:
-- get documents from <task>/queue, move to <task>/in_process
-- parse
-- store result in <task>/result, remove from <task>/in_process
+- client puts document into `<task>/queue`
+- worker moves a document from `<task>/queue` to `<task>/in_process` and gets the text
+- worker processes the document
+- worker stores the result in `<task>/results` and removes it from `<task>/in_process`
+- client retrieves the document from `<task>/results`
 
-HTTP REST endpoints
+Clients/workers can either access the filesystem directly or use the HTTP server. 
+
+HTTP Server
+====
+
+An HTTP server will allow access to the NLPipe service with the following REST endpoints:
 
 From client perspective:
 
@@ -50,4 +57,8 @@ GET <task>?n=N # gets N documents from task (and moves from queue to in_process)
 PUT <task>/<hash> # stores result 
 ```
 
+Client bindings
+===
 
+There are client bindings for the direct filesystem access and (in the future) for the HTTP server.
+Browse the [Python client bindings API documentation](http://nlpipe.readthedocs.io/en/latest/nlpipe.html)
