@@ -1,4 +1,5 @@
-# NLPipe
+# NLPipe [![Build Status](https://travis-ci.org/vanatteveldt/nlpipe.png?branch=master)](https://travis-ci.org/vanatteveldt/nlpipe)
+
 Client/server based NLP Pipelining
 
 This is a simple, filesystem-based format- and progress agnostic setup for running document processing.
