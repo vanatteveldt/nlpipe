@@ -62,14 +62,13 @@ class Client(object):
         :param doc: A document (string)
         :return: The result of processing (string)
         """
-        if self.status(module, doc) == 'UNKNOWN':
+        id = get_id(doc)
+        if self.status(module, id) == 'UNKNOWN':
             self.process(module, doc)
         while True:
-            status = self.status(module, doc)
-            if status == 'DONE':
-                return self.result(module, doc)
-            if status == 'ERROR':
-                raise Exception("Error on processing {doc} with {module}".format(**locals()))
+            status = self.status(module, id)
+            if status in ('DONE', 'ERROR'):
+                return self.result(module, id)
             time.sleep(0.1)
 
     def get_task(self, module):
@@ -99,6 +98,14 @@ class Client(object):
         """
         raise NotImplementedError()
 
+    def store_error(self, module, id, result):
+        """
+        Store an error
+        :param module: Module name
+        :param id: Document or task ID
+        :param result: Result (string) describing the error
+        """
+        raise NotImplementedError()
 
 class FSClient(Client):
     """
@@ -156,7 +163,12 @@ class FSClient(Client):
         return id
 
     def result(self, module, id):
-        return self._read(module, 'DONE', id)
+        status = self.status(module, id)
+        if status == 'DONE':
+            return self._read(module, 'DONE', id)
+        if status == 'ERROR':
+            raise Exception(self._read(module, 'ERROR', id))
+        raise ValueError("Status of {id} is {status}".format(**locals()))
 
     def get_task(self, module):
         path = self._filename(module, 'PENDING')
@@ -182,4 +194,19 @@ class FSClient(Client):
         if status in ('STARTED', 'ERROR'):
             self._delete(module, status, id)
 
+    def store_error(self, module, id, result):
+        status = self.status(module, id)
+        if status not in ('STARTED', 'DONE', 'ERROR'):
+            raise ValueError("Cannot store result for task {id} with status {status}".format(**locals()))
+        self._write(module, 'ERROR', id, result)
+        if status in ('STARTED', 'DONE'):
+            self._delete(module, status, id)
 
+if __name__ == '__main__':
+    #TODO: proper argument handling
+    import sys
+    dirname = sys.argv[1]
+    module=sys.argv[2]
+    doc = sys.stdin.read()
+    c = FSClient(dirname)
+    print(c.process_inline(module, doc))
