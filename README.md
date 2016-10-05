@@ -13,6 +13,34 @@ Components:
 - Client bindings
 - Workers
 
+Command line usage
+===
+
+The workers and client can be activated from the command line. (currently quite limited)
+
+To start the workers with the provided example.conf configuration, run:
+
+```{sh}
+$ env/bin/python -m nlpipe.worker example.conf 
+```
+
+To test the workers, you can call the client directly:
+
+echo "Walter loves politicians" | env/bin/python -m nlpipe.client /tmp/nlpipe test_upper
+WALTER LOVES POLITICIANS
+```{sh}
+$ echo "Mary hates bugs" | env/bin/python -m nlpipe.client /tmp/nlpipe test_upper
+MARY HATES BUGS
+
+$ echo "Mary hates bugs" | env/bin/python -m nlpipe.client /tmp/nlpipe corenlp_lemmatize
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="CoreNLP-to-HTML.xsl" type="text/xsl"?>
+<root>
+  <document>
+...
+```
+
+
 Storage directory layout
 ===
 
