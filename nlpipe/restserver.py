@@ -1,6 +1,7 @@
 import sys
 from flask import Flask, request, make_response, Response, abort
 from nlpipe.client import FSClient
+import logging
 
 app = Flask('NLPipe')
 
@@ -58,6 +59,28 @@ def put_results(module, id):
     return '', 204
 
 if __name__ == '__main__':
-    dir = sys.argv[1]
-    app.client = FSClient(dir)
-    app.run(debug=True)
+    import argparse
+    import tempfile
+    import shutil
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("directory", nargs="?", help="Location of NLPipe storage directory (default: tempdir)")
+    parser.add_argument("--port", "-p", type=int, help="Port number to listen to (default: 5000)")
+    parser.add_argument("--host", "-H", help="Host address to listen on (default: localhost)")
+    parser.add_argument("--debug", "-d", help="Set debug mode", action="store_true")
+    args = parser.parse_args()
+    
+    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
+                        format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')\
+                        
+    kargs = {"debug": args.debug}
+    if args.host: kargs['host'] = args.host
+    if args.port: kargs['port'] = args.port
+
+    if not args.directory:
+        tempdir = tempfile.TemporaryDirectory(prefix="nlpipe_")
+        args.directory = tempdir.name
+
+    app.client = FSClient(args.directory)
+    logging.debug("Serving from {args.directory}".format(**locals()))
+    app.run(**kargs)

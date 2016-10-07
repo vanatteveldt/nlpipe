@@ -1,8 +1,9 @@
 import hashlib
 import time
 import os.path
-
 import errno
+
+import requests
 
 # Status definitions and subdir names
 STATUS = {"PENDING": "queue",
@@ -188,8 +189,6 @@ class FSClient(Client):
         status = self.status(module, id)
         if status not in ('STARTED', 'DONE', 'ERROR'):
             raise ValueError("Cannot store result for task {id} with status {status}".format(**locals()))
-        if status == 'DONE':
-            return
         self._write(module, 'DONE', id, result)
         if status in ('STARTED', 'ERROR'):
             self._delete(module, status, id)
@@ -202,19 +201,98 @@ class FSClient(Client):
         if status in ('STARTED', 'DONE'):
             self._delete(module, status, id)
 
+class HTTPClient(Client):
+    """
+    NLPipe client that connects to the REST server
+    """
+
+    def __init__(self, server="http://localhost:5000"):
+        self.server = server
+
+    def status(self, module, id):
+        url = "{self.server}/api/modules/{module}/{id}".format(**locals())
+        res = requests.head(url)
+        if 'Status' in res.headers:
+            return(res.headers['Status'])
+        raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
+                        .format(**locals()))
+        
+    def process(self, module, doc):
+        url = "{self.server}/api/modules/{module}/".format(**locals())
+        res = requests.post(url, data=doc)
+        if res.status_code != 202:
+            raise Exception("Error on processing doc with {module}; return code: {res.status_code}"
+                            .format(**locals()))
+        return res.headers['ID']
+
+    def result(self, module, id):
+        url = "{self.server}/api/modules/{module}/{id}".format(**locals())
+        res = requests.get(url)
+        if res.status_code != 200:
+            raise Exception("Error on getting result for {module}/{id}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        return res.text
+
+    def get_task(self, module):
+        url = "{self.server}/api/modules/{module}".format(**locals())
+        res = requests.get(url)
+
+        if res.status_code == 404:
+            return None, None
+        elif res.status_code != 200:
+            raise Exception("Error on getting a task for {module}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        return res.headers['ID'], res.text
+
+
+    def store_result(self, module, id, result):
+        url = "{self.server}/api/modules/{module}/{id}".format(**locals())
+        res = requests.put(url, data=result)
+
+        if res.status_code != 204:
+            raise Exception("Error on getting a task for {module}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        
 if __name__ == '__main__':
     import argparse
     import sys
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("server", help="Server directory location")
+    parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("module", help="Module name")
-    parser.add_argument("action", help="Action")
-    parser.add_argument('target', help="Document or task ID (use - to read from stdin)")
-    args = parser.parse_args()
-    if args.target == "-":
-        args.target = sys.stdin.read() 
+    action_parser = parser.add_subparsers(dest='action', title='Actions',)
 
-    c = FSClient(args.server)
-    action = getattr(c, args.action)
-    print(action(args.module, args.target))
+    for action in 'status', 'result':
+        action_parser.add_parser(action).add_argument('id', help="Task ID")
+    for action in 'process', 'process_inline':
+        p = action_parser.add_parser(action)
+        p.add_argument('doc', help="Document to process (use - to read from stdin")
+    action_parser.add_parser('get_task')
+    for action in ('store_result', 'store_error'):
+        p = action_parser.add_parser(action)
+        p.add_argument('id', help="Task ID")
+        p.add_argument('result', help="Document to store (use - to read from stdin")
+    
+    args = vars(parser.parse_args())
+
+    server = args.pop('server')
+    if server.startswith("http:") or server.startswith("https:"):
+        c = HTTPClient(server)
+    else:
+        c = FSClient(server)
+
+    for doc_arg in ('doc', 'result'):
+        if args.get(doc_arg) == '-':
+            args[doc_arg] = sys.stdin.read()
+
+    action = args.pop('action')
+    result = getattr(c, action)(**args)
+    if action == "get_task":
+        id, doc = result
+        if id is not None:
+            print(id, file=sys.stderr)
+            print(doc)
+    elif action in ("store_result", "store_error"):
+        pass
+    else:
+        print(result)
