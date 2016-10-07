@@ -203,10 +203,18 @@ class FSClient(Client):
             self._delete(module, status, id)
 
 if __name__ == '__main__':
-    #TODO: proper argument handling
+    import argparse
     import sys
-    dirname = sys.argv[1]
-    module=sys.argv[2]
-    doc = sys.stdin.read()
-    c = FSClient(dirname)
-    print(c.process_inline(module, doc))
+    
+    parser = argparse.ArgumentParser()
+    parser.add_argument("server", help="Server directory location")
+    parser.add_argument("module", help="Module name")
+    parser.add_argument("action", help="Action")
+    parser.add_argument('target', help="Document or task ID (use - to read from stdin)")
+    args = parser.parse_args()
+    if args.target == "-":
+        args.target = sys.stdin.read() 
+
+    c = FSClient(args.server)
+    action = getattr(c, args.action)
+    print(action(args.module, args.target))
