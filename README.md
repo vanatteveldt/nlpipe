@@ -25,19 +25,13 @@ $ env/bin/python -m nlpipe.worker example.conf
 ```
 
 To test the workers, you can call the client directly:
-
-echo "Walter loves politicians" | env/bin/python -m nlpipe.client /tmp/nlpipe test_upper
-WALTER LOVES POLITICIANS
 ```{sh}
-$ echo "Mary hates bugs" | env/bin/python -m nlpipe.client /tmp/nlpipe test_upper
-MARY HATES BUGS
-
-$ echo "Mary hates bugs" | env/bin/python -m nlpipe.client /tmp/nlpipe corenlp_lemmatize
-<?xml version="1.0" encoding="UTF-8"?>
-<?xml-stylesheet href="CoreNLP-to-HTML.xsl" type="text/xsl"?>
-<root>
-  <document>
-...
+$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper process "this is a test"
+0x54b0c58c7ce9f2a8b551351102ee0938
+$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper status 0x54b0c58c7ce9f2a8b551351102ee0938
+DONE
+$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper result 0x54b0c58c7ce9f2a8b551351102ee0938
+THIS IS A TEST
 ```
 
 
