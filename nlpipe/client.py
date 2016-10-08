@@ -2,6 +2,7 @@ import hashlib
 import time
 import os.path
 import errno
+import logging
 
 import requests
 
@@ -234,7 +235,7 @@ class HTTPClient(Client):
         return res.text
 
     def get_task(self, module):
-        url = "{self.server}/api/modules/{module}".format(**locals())
+        url = "{self.server}/api/modules/{module}/".format(**locals())
         res = requests.get(url)
 
         if res.status_code == 404:
@@ -252,6 +253,15 @@ class HTTPClient(Client):
         if res.status_code != 204:
             raise Exception("Error on getting a task for {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
+
+def _get_client(servername):
+    if servername.startswith("http:") or servername.startswith("https:"):
+        logging.getLogger('requests').setLevel(logging.WARNING)
+        logging.debug("Connecting to REST server at {servername}".format(**locals()))
+        return HTTPClient(servername)
+    else:
+        logging.debug("Connecting to local repository {servername}".format(**locals()))
+        return FSClient(servername)
         
 if __name__ == '__main__':
     import argparse
@@ -260,8 +270,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("module", help="Module name")
+    parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
     action_parser = parser.add_subparsers(dest='action', title='Actions',)
 
+
+    
     for action in 'status', 'result':
         action_parser.add_parser(action).add_argument('id', help="Task ID")
     for action in 'process', 'process_inline':
@@ -273,20 +286,19 @@ if __name__ == '__main__':
         p.add_argument('id', help="Task ID")
         p.add_argument('result', help="Document to store (use - to read from stdin")
     
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args())  # turn to dict so we can pop and pass the rest as kargs
 
-    server = args.pop('server')
-    if server.startswith("http:") or server.startswith("https:"):
-        c = HTTPClient(server)
-    else:
-        c = FSClient(server)
-
+    logging.basicConfig(level=logging.DEBUG if args.pop('verbose', False) else logging.INFO,
+                        format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
+    
+    client = _get_client(args.pop('server'))
+    
     for doc_arg in ('doc', 'result'):
         if args.get(doc_arg) == '-':
             args[doc_arg] = sys.stdin.read()
 
     action = args.pop('action')
-    result = getattr(c, action)(**args)
+    result = getattr(client, action)(**args)
     if action == "get_task":
         id, doc = result
         if id is not None:

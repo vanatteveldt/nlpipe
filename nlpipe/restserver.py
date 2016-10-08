@@ -43,7 +43,6 @@ def result(module, id):
 @app.route('/api/modules/<module>/', methods=['GET'])
 def get_task(module):
     id, doc = app.client.get_task(module)
-    print(id, doc)
     if doc is None:
         return 'Queue {module} empty!\n'.format(**locals()), 404
     resp = Response(doc, status=200)
@@ -67,11 +66,12 @@ if __name__ == '__main__':
     parser.add_argument("directory", nargs="?", help="Location of NLPipe storage directory (default: tempdir)")
     parser.add_argument("--port", "-p", type=int, help="Port number to listen to (default: 5000)")
     parser.add_argument("--host", "-H", help="Host address to listen on (default: localhost)")
-    parser.add_argument("--debug", "-d", help="Set debug mode", action="store_true")
+    parser.add_argument("--debug", "-d", help="Set debug mode (implies -v)", action="store_true")
+    parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
     args = parser.parse_args()
     
-    logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
-                        format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')\
+    logging.basicConfig(level=logging.DEBUG if (args.debug or args.verbose) else logging.INFO,
+                        format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
                         
     kargs = {"debug": args.debug}
     if args.host: kargs['host'] = args.host

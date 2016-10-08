@@ -3,6 +3,8 @@ import sys
 import subprocess
 import logging
 
+from nlpipe import client
+
 from multiprocessing import Process
 from configparser import SafeConfigParser
 from pydoc import locate
@@ -12,7 +14,7 @@ class Worker(Process):
     Base class for NLP workers.
     """
 
-    sleep_timeout = 0.1
+    sleep_timeout = 1
 
     def __init__(self, client, module_name):
         """
@@ -76,16 +78,15 @@ def _import(name):
         raise ValueError("Cannot import {name!r}".format(**locals()))
     return result
     
-def run_config(filename):    
+def run_config(client, config_filename, modules=None):    
     config = SafeConfigParser()
-    config.read(filename)
+    config.read(config_filename)
 
-    # create client
-    client_class = _import(config['CLIENT'].pop('class'))
-    client = client_class(**config['CLIENT'])
+    if modules is None:
+        modules = set(config) - {'DEFAULT'} # all workers
 
     # create and start workers
-    for module in set(config) - {'CLIENT', 'DEFAULT'}:
+    for module in modules:
         worker_class = _import(config[module].pop('worker_class'))
         worker = worker_class(client, module, **config[module])
         logging.debug("Starting worker {module}".format(**locals()))
@@ -94,8 +95,19 @@ def run_config(filename):
     logging.info("Workers active and waiting for input")
     
 if __name__ == '__main__':
-    #TODO: proper arg handling, allow choosing worker, loggin level, client, etc.
-    logging.basicConfig(level=logging.DEBUG,
-                        format='[%(asctime)s %(name)-12s %(levelname)-8s] %(message)s')
-    config_file = sys.argv[1]
-    run_config(config_file)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("server", help="Server hostname or directory location")
+    parser.add_argument("config", help="Configuration file name")
+    parser.add_argument("workers", nargs="*", help="Run only the specified workers")
+    parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
+
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
+                        format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
+    
+    client = client._get_client(args.server)
+
+    print(args)
+    run_config(client, args.config, args.workers or None)
