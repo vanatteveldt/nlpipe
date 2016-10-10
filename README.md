@@ -16,12 +16,16 @@ Components:
 Installation
 ===
 
-To use nlpipe you can use the docker image:
+To use nlpipe you can use the docker image: (you might need to run this as superuser)
 
 ```{sh}
-$ sudo docker pull vanatteveldt/nlpipe
-$ sudo docker run -dp 5001:5001 vanatteveldt/nlpipe
+docker run -dp 5001:5001 vanatteveldt/nlpipe
 8d8c0017d51f9c4f0e217e64bcd3b64b791a7122dcafec148900032439b1c272
+```
+
+Now, you can connect to docker using on of the clients, or directly with e.g. curl:
+
+```{sh}
 $ curl -XPOST -sd"dit is een test" http://localhost:5001/api/modules/test_upper/
 0xed16a14a645f095c94cc18d64b19920a
 $ curl http://localhost:5001/api/modules/test_upper/0xed16a14a645f095c94cc18d64b19920a
