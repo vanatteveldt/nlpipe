@@ -20,7 +20,6 @@ To use nlpipe you can use the docker image: (you might need to run this as super
 
 ```{sh}
 docker run -dp 5001:5001 vanatteveldt/nlpipe
-8d8c0017d51f9c4f0e217e64bcd3b64b791a7122dcafec148900032439b1c272
 ```
 
 Now, you can connect to docker using on of the clients, or directly with e.g. curl:
