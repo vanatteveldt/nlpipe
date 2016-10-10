@@ -13,6 +13,34 @@ Components:
 - Client bindings
 - Workers
 
+Installation
+===
+
+To use nlpipe you can use the docker image:
+
+```{sh}
+$ sudo docker pull vanatteveldt/nlpipe
+$ sudo docker run -dp 5001:5001 vanatteveldt/nlpipe
+8d8c0017d51f9c4f0e217e64bcd3b64b791a7122dcafec148900032439b1c272
+$ curl -XPOST -sd"dit is een test" http://localhost:5001/api/modules/test_upper/
+0xed16a14a645f095c94cc18d64b19920a
+$ curl http://localhost:5001/api/modules/test_upper/0xed16a14a645f095c94cc18d64b19920a
+DIT IS EEN TEST
+```
+
+To install nlpipe locally, it is best to create a virtual environment and install nlpipe in it
+
+
+```{sh}
+pyvenv env
+env/bin/pip install -e git+git://github.com/vanatteveldt/nlpipe.git#egg=nlpipe
+```
+Now you can run e.g.:
+
+```{sh}
+env/bin/python -m nlpipe.restserver
+```
+
 Command line usage
 ===
 
