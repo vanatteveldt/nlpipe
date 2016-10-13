@@ -3,6 +3,7 @@ Trivial test module that converts to upper case
 """
 
 from nlpipe.module import Module
+import json
 
 class TestUpper(Module):
     name= "test_upper"
@@ -12,5 +13,7 @@ class TestUpper(Module):
         return text.upper()
     def convert(self, result, format):
         if format=="json":
-            result = {"status": "OK", "result": result}
+            return json.dumps({"status": "OK", "result": result})
         super().convert(result, format)
+
+TestUpper.register()

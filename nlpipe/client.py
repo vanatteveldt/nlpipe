@@ -6,6 +6,8 @@ import logging
 
 import requests
 
+from nlpipe.module import Module
+
 # Status definitions and subdir names
 STATUS = {"PENDING": "queue",
           "STARTED": "inprogress",
@@ -49,10 +51,11 @@ class Client(object):
         """
         raise NotImplementedError()
 
-    def result(self, module, id):
-        """Get processing result
+    def result(self, module, id, format=None):
+        """Get processing result, optionally converted to a specified format
         :param module: Module name
         :param id: A document (string) or task ID
+        :param format: (Optional) format to convert to, e.g. 'xml', 'csv', 'json'
         :return: The result of processing (string)
         """
         raise NotImplementedError()
@@ -164,10 +167,13 @@ class FSClient(Client):
             self._write(module, 'PENDING', id, doc)
         return id
 
-    def result(self, module, id):
+    def result(self, module, id, format=None):
         status = self.status(module, id)
         if status == 'DONE':
-            return self._read(module, 'DONE', id)
+            result = self._read(module, 'DONE', id)
+            if format is not None:
+                result = Module.get_module(module).convert(result, format)
+            return result
         if status == 'ERROR':
             raise Exception(self._read(module, 'ERROR', id))
         raise ValueError("Status of {id} is {status}".format(**locals()))

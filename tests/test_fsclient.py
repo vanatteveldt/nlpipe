@@ -1,16 +1,17 @@
 from tempfile import TemporaryDirectory
 import time
 import os.path
+import json
+
 from nose.tools import assert_equal, assert_true, assert_false
 
 from nlpipe.client import FSClient, get_id
+from nlpipe import modules
 
-
-# noinspection PyProtectedMember
 def test_pipeline():
     with TemporaryDirectory() as dir:
         c = FSClient(dir)
-        m = "testmodule"
+        m = "test_upper"
         txt1, txt2 = "This is a test", "This is another test"
 
         # Add a task to the queue
@@ -41,3 +42,7 @@ def test_pipeline():
 
         # Retrieve results
         assert_equal(c.result(m, id1), txt1.upper())
+        
+        # Retrieve results in different format
+        result = c.result(m, id1, format='json')
+        assert_equal(json.loads(result), {'result': 'THIS IS A TEST', 'status': 'OK'})

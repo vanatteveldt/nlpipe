@@ -12,7 +12,7 @@ import requests
 import json
 import os
 
-class CoreNLPLemmatizer(object):
+class CoreNLPLemmatizer(Module):
     name = "corenlp_lemmatize"
     properties = {"annotators": "tokenize,ssplit,pos,lemma,ner", "outputFormat": "xml"}
 
@@ -33,3 +33,5 @@ class CoreNLPLemmatizer(object):
         if res.status_code != 200:
             raise Exception("Error calling corenlp at {url}: {res.status_code}\n{res.content}".format(**locals()))
         return res.content.decode("utf-8")
+
+CoreNLPLemmatizer.register()
