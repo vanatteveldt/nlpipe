@@ -19,20 +19,30 @@ class Module(object):
         """Register this module in the nlpipe.module.known_modules"""
         register_module(cls)
 
-    @classmethod
-    def get_module(cls, name):
-        """Get a module instance corresponding to the given module name"""
-        try:
-            module_class = _known_modules[name]
-        except KeyError:
-            raise ValueError("Unknown module: {name}. Known modules: {}"
-                             .format(list(_known_modules.keys()), **locals()))
-        return module_class()
-        
+
+class UnknownModuleError(ValueError):
+    pass
+
 _known_modules = {}
+
 def register_module(module):
+    """Register this module in the nlpipe.module.known_modules"""
     if module.name in _known_modules:
         raise ValueError("Module with name {module.name} already registered: {}"
                          .format(_known_modules[module.name], **locals()))
     _known_modules[module.name] = module
     
+def get_module(name):
+    """Get a module instance corresponding to the given module name"""
+    try:
+        module_class = _known_modules[name]
+    except KeyError:
+        raise UnknownModuleError("Unknown module: {name}. Known modules: {}"
+                         .format(list(_known_modules.keys()), **locals()))
+    return module_class()
+
+def known_modules():
+    """Get all known modules"""
+    for name in _known_modules:
+        yield get_module(name)
+        

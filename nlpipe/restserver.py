@@ -1,6 +1,8 @@
 import sys
 from flask import Flask, request, make_response, Response, abort
 from nlpipe.client import FSClient
+from nlpipe.module import UnknownModuleError, get_module
+from nlpipe.worker import run_workers
 import logging
 
 app = Flask('NLPipe')
@@ -16,6 +18,10 @@ STATUS_CODES = {
 
 @app.route('/api/modules/<module>/', methods=['POST'])
 def post_task(module):
+    try:
+        get_module(module)  # check if module exists
+    except UnknownModuleError as e:
+        return str(e), 404
     doc = request.get_data().decode('UTF-8')
     id = app.client.process(module, doc)
     resp = Response(id+"\n", status=202)
@@ -32,8 +38,9 @@ def task_status(module, id):
 
 @app.route('/api/modules/<module>/<id>', methods=['GET'])
 def result(module, id):
+    format = request.args.get('format', None)
     try:
-        result = app.client.result(module, id)
+        result = app.client.result(module, id, format=format)
     except FileNotFoundError:
         return 'Error: Unknown document: {module}/{id}\n'.format(**locals()), 404
     return result, 200
@@ -64,6 +71,7 @@ if __name__ == '__main__':
     
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", nargs="?", help="Location of NLPipe storage directory (default: tempdir)")
+    parser.add_argument("modules", nargs="*", help="(Optional) names of module(s) to run")
     parser.add_argument("--port", "-p", type=int, help="Port number to listen to (default: 5000)")
     parser.add_argument("--host", "-H", help="Host address to listen on (default: localhost)")
     parser.add_argument("--debug", "-d", help="Set debug mode (implies -v)", action="store_true")
@@ -82,5 +90,7 @@ if __name__ == '__main__':
         args.directory = tempdir.name
 
     app.client = FSClient(args.directory)
+    if args.modules:
+        run_workers(app.client, args.modules)
     logging.debug("Serving from {args.directory}".format(**locals()))
     app.run(**kargs)

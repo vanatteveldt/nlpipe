@@ -6,7 +6,7 @@ import logging
 
 import requests
 
-from nlpipe.module import Module
+from nlpipe.module import Module, get_module
 
 # Status definitions and subdir names
 STATUS = {"PENDING": "queue",
@@ -29,7 +29,6 @@ def get_id(doc):
         doc = doc.encode("utf-8")
     m.update(doc)
     return "0x" + m.hexdigest()
-
 
 class Client(object):
     """Abstract class for NLPipe client bindings"""
@@ -172,7 +171,7 @@ class FSClient(Client):
         if status == 'DONE':
             result = self._read(module, 'DONE', id)
             if format is not None:
-                result = Module.get_module(module).convert(result, format)
+                result = get_module(module).convert(result, format)
             return result
         if status == 'ERROR':
             raise Exception(self._read(module, 'ERROR', id))
@@ -228,12 +227,14 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/".format(**locals())
         res = requests.post(url, data=doc)
         if res.status_code != 202:
-            raise Exception("Error on processing doc with {module}; return code: {res.status_code}"
+            raise Exception("Error on processing doc with {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
         return res.headers['ID']
 
-    def result(self, module, id):
+    def result(self, module, id, format=None):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
+        if format is not None:
+            url = "{url}?format={format}".format(**locals())
         res = requests.get(url)
         if res.status_code != 200:
             raise Exception("Error on getting result for {module}/{id}; return code: {res.status_code}:\n{res.text}"

@@ -4,6 +4,7 @@ import subprocess
 import logging
 
 from nlpipe import client
+from nlpipe.module import get_module
 
 from multiprocessing import Process
 from configparser import SafeConfigParser
@@ -49,9 +50,18 @@ def _import(name):
     return result
     
 def run_workers(client, modules):
+    """
+    Run the given workers as separate processes
+    :param modules: names of the modules (module name or fully qualified class name)
+    """
+    # import built-in workers
+    import nlpipe.modules
     # create and start workers
     for module_class in modules:
-        module = _import(module_class)()
+        if "." in module_class:
+            module = _import(module_class)()
+        else:
+            module = get_module(module_class)
         logging.debug("Starting worker {module}".format(**locals()))
         Worker(client=client, module=module).start()
 
