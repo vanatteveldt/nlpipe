@@ -21,7 +21,7 @@ class CoreNLPLemmatizer(Module):
             server = os.getenv('CORENLP_HOST', 'http://localhost:9000')
         self.server = server
 
-    def status(self):
+    def check_status(self):
         res = requests.get(self.server)
         if "http://nlp.stanford.edu/software/corenlp.shtml" not in res.text:
             raise Exception("Unexpected answer at {self.server}".format(**locals()))

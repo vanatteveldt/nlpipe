@@ -1,15 +1,6 @@
-import logging
 from nose.tools import assert_in
-from unittest import SkipTest
 from nlpipe.modules.corenlp import CoreNLPLemmatizer
-
-
-def _check_status(module):
-    try:
-        module.check_status()
-    except Exception as e:
-        logging.exception("Module offline: {module}".format(**locals()))
-        raise SkipTest(e)
+from tests.tools import _check_status
 
 def test_process():
     """
