@@ -3,6 +3,7 @@ import time
 import os.path
 import errno
 import logging
+import subprocess
 
 import requests
 
@@ -181,17 +182,18 @@ class FSClient(Client):
 
     def get_task(self, module):
         path = self._filename(module, 'PENDING')
+        # I can't find a way to get newest file in python without iterating over all of them
+        # So this seems more robust/faster than looping over python with .getctime for every entry
+        cmd = "ls -rt {path} | head -1".format(**locals())
+        fn = subprocess.check_output(cmd, shell=True).decode("utf-8").strip()
+        if not fn: 
+            return None, None  # no files to process
         try:
-            files = os.listdir(path)
-        except OSError as e:
-            if e.errno == errno.ENOENT:
-                return None, None
-            raise
-        if not files:
-            return None, None
-        id = min(files, key=lambda f: os.path.getctime(os.path.join(path, f)))
-        self._move(module, id, 'PENDING', 'STARTED')
-        return id, self._read(module, 'STARTED', id)
+            self._move(module, fn, 'PENDING', 'STARTED')
+        except FileNotFoundError:
+            # file was removed between choosing it and now, so try again
+            return self.get_task(module)
+        return fn, self._read(module, 'STARTED', fn)
 
     def store_result(self, module, id, result):
         status = self.status(module, id)
