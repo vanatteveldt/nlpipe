@@ -19,5 +19,6 @@ setup(
         "Flask",
         "requests",
         "pynlpl",
+        "corenlp_xml",
     ]
 )

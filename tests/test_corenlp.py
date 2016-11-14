@@ -1,6 +1,8 @@
-from nose.tools import assert_in
+from nose.tools import assert_in, assert_equal
 from nlpipe.modules.corenlp import CoreNLPLemmatizer
 from tests.tools import _check_status
+from io import StringIO
+import csv
 
 def test_process():
     """
@@ -10,6 +12,10 @@ def test_process():
     """
     c = CoreNLPLemmatizer()
     _check_status(c)
-    result = c.process("a test")
-    assert_in("<lemma>test</lemma>", result)
+    result = c.process("two words")
+    assert_in("<lemma>word</lemma>", result)
+    
+    tokens = list(csv.DictReader(StringIO(c.convert(result, format="csv"))))
+    assert_equal(len(tokens), 2)
+    assert_equal(tokens[1]['lemma'], "word")
     
