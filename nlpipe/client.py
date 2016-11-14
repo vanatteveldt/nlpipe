@@ -33,10 +33,11 @@ def get_id(doc):
 class Client(object):
     """Abstract class for NLPipe client bindings"""
 
-    def process(self, module, doc):
+    def process(self, module, doc, id=None):
         """Add a document to be processed by module, returning the task ID
         :param module: Module name
         :param doc: A document (string)
+        :param id: An optional id for the task
         :return: task ID
         :rtype: str
         """
@@ -160,8 +161,9 @@ class FSClient(Client):
                 return status
         return 'UNKNOWN'
 
-    def process(self, module, doc):
-        id = get_id(doc)
+    def process(self, module, doc, id=None):
+        if id is None:
+            id = get_id(doc)
         if self.status(module, id) == 'UNKNOWN':
             self._write(module, 'PENDING', id, doc)
         return id
@@ -281,12 +283,13 @@ if __name__ == '__main__':
     action_parser = parser.add_subparsers(dest='action', title='Actions',)
 
 
-    
+    action_parser.add_parser('check')
     for action in 'status', 'result':
         action_parser.add_parser(action).add_argument('id', help="Task ID")
     for action in 'process', 'process_inline':
         p = action_parser.add_parser(action)
         p.add_argument('doc', help="Document to process (use - to read from stdin")
+        p.add_argument('id', nargs="?", help="Optional explicit ID")
     action_parser.add_parser('get_task')
     for action in ('store_result', 'store_error'):
         p = action_parser.add_parser(action)
@@ -305,7 +308,11 @@ if __name__ == '__main__':
             args[doc_arg] = sys.stdin.read()
 
     action = args.pop('action')
-    result = getattr(client, action)(**args)
+    if action == "check":
+        client._check_dirs(**args)
+        result = None
+    else:
+        result = getattr(client, action)(**args)
     if action == "get_task":
         id, doc = result
         if id is not None:
@@ -314,4 +321,5 @@ if __name__ == '__main__':
     elif action in ("store_result", "store_error"):
         pass
     else:
-        print(result)
+        if result is not None:
+            print(result)

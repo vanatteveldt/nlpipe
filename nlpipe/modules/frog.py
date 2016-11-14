@@ -52,3 +52,5 @@ class FrogLemmatizer(Module):
         for line in self.call_frog(text):
             w.writerow(list(line))
         return s.getvalue()
+    
+FrogLemmatizer.register()
