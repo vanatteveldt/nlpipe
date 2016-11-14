@@ -282,7 +282,8 @@ if __name__ == '__main__':
     parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("module", help="Module name")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
-    action_parser = parser.add_subparsers(dest='action', title='Actions',)
+    action_parser = parser.add_subparsers(dest='action', title='Actions')
+    action_parser.required = True
 
 
     action_parser.add_parser('check')
