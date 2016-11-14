@@ -40,7 +40,11 @@ class Worker(Process):
             except Exception as e:
                 logging.exception("Exception on parsing {self.module.name}/{id}"
                               .format(**locals()))
-                self.client.store_error(self.module.name, id, str(e))
+                try:
+                    self.client.store_error(self.module.name, id, str(e))
+                except:
+                    logging.exception("Exception on storing error for {self.module.name}/{id}"
+                                      .format(**locals()))
 
 
 def _import(name):
