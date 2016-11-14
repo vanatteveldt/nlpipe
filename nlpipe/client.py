@@ -206,7 +206,7 @@ class FSClient(Client):
     def store_error(self, module, id, result):
         status = self.status(module, id)
         if status not in ('STARTED', 'DONE', 'ERROR'):
-            raise ValueError("Cannot store result for task {id} with status {status}".format(**locals()))
+            raise ValueError("Cannot store error for task {id} with status {status}".format(**locals()))
         self._write(module, 'ERROR', id, result)
         if status in ('STARTED', 'DONE'):
             self._delete(module, status, id)
