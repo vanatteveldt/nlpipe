@@ -61,7 +61,7 @@ class Client(object):
         """
         raise NotImplementedError()
 
-    def process_inline(self, module, doc):
+    def process_inline(self, module, doc, format=None):
         """
         Process the given document, use cached version if possible, wait and return result
         :param module: Module name
@@ -74,7 +74,7 @@ class Client(object):
         while True:
             status = self.status(module, id)
             if status in ('DONE', 'ERROR'):
-                return self.result(module, id)
+                return self.result(module, id, format=format)
             time.sleep(0.1)
 
     def get_task(self, module):
@@ -156,6 +156,10 @@ class FSClient(Client):
         else:
             return os.path.join(dirname, id)
 
+    def check(self, module):
+        self._check_dirs(self, module)
+        return module.check_status()
+        
     def status(self, module, id):
         for status in STATUS.keys():
             if os.path.exists(self._filename(module, status, id)):
@@ -166,7 +170,10 @@ class FSClient(Client):
         if id is None:
             id = get_id(doc)
         if self.status(module, id) == 'UNKNOWN':
+            logging.debug("Assigning doc {id} to {module}".format(**locals()))
             self._write(module, 'PENDING', id, doc)
+        else:
+            logging.debug("Document {id} had status {}".format(self.status(module, id), **locals()))
         return id
 
     def result(self, module, id, format=None):
@@ -285,19 +292,18 @@ if __name__ == '__main__':
     action_parser = parser.add_subparsers(dest='action', title='Actions')
     action_parser.required = True
 
-
-    action_parser.add_parser('check')
-    for action in 'status', 'result':
-        action_parser.add_parser(action).add_argument('id', help="Task ID")
+    actions = {name: action_parser.add_parser(name) 
+               for name in ('status', 'result', 'check', 'process', 'process_inline',
+                              'store_result', 'store_error')}
+    for action in 'status', 'result', 'store_result', 'store_error':
+        actions[action].add_argument('id', help="Task ID")
+    for action in 'result', 'process_inline':
+        actions[action].add_argument("--format", help="Optional output format to retrieve")
     for action in 'process', 'process_inline':
-        p = action_parser.add_parser(action)
-        p.add_argument('doc', help="Document to process (use - to read from stdin")
-        p.add_argument('id', nargs="?", help="Optional explicit ID")
-    action_parser.add_parser('get_task')
+        actions[action].add_argument('doc', help="Document to process (use - to read from stdin")
+        actions[action].add_argument('id', nargs="?", help="Optional explicit ID")
     for action in ('store_result', 'store_error'):
-        p = action_parser.add_parser(action)
-        p.add_argument('id', help="Task ID")
-        p.add_argument('result', help="Document to store (use - to read from stdin")
+        actions[action].add_argument('result', help="Document to store (use - to read from stdin")
     
     args = vars(parser.parse_args())  # turn to dict so we can pop and pass the rest as kargs
 
@@ -311,11 +317,8 @@ if __name__ == '__main__':
             args[doc_arg] = sys.stdin.read()
 
     action = args.pop('action')
-    if action == "check":
-        client._check_dirs(**args)
-        result = None
-    else:
-        result = getattr(client, action)(**args)
+    args = {k:v for (k,v) in args.items() if v}
+    result = getattr(client, action)(**args)
     if action == "get_task":
         id, doc = result
         if id is not None:

@@ -72,7 +72,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", nargs="?", help="Location of NLPipe storage directory (default: tempdir)")
     parser.add_argument("modules", nargs="*", help="(Optional) names of module(s) to run")
-    parser.add_argument("--port", "-p", type=int, help="Port number to listen to (default: 5000)")
+    parser.add_argument("--port", "-p", type=int, default=5001, help="Port number to listen to (default: 5001)")
     parser.add_argument("--host", "-H", help="Host address to listen on (default: localhost)")
     parser.add_argument("--debug", "-d", help="Set debug mode (implies -v)", action="store_true")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
@@ -91,6 +91,8 @@ if __name__ == '__main__':
 
     app.client = FSClient(args.directory)
     if args.modules:
-        run_workers(app.client, args.modules)
+        for module in run_workers(app.client, args.modules):
+            app.client._check_dirs(module.name)
+            
     logging.debug("Serving from {args.directory}".format(**locals()))
     app.run(**kargs)

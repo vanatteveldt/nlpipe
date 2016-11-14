@@ -61,6 +61,7 @@ def run_workers(client, modules):
     # import built-in workers
     import nlpipe.modules
     # create and start workers
+    result = [] # don't yield, result can be ignored silently
     for module_class in modules:
         if "." in module_class:
             module = _import(module_class)()
@@ -68,8 +69,10 @@ def run_workers(client, modules):
             module = get_module(module_class)
         logging.debug("Starting worker {module}".format(**locals()))
         Worker(client=client, module=module).start()
+        result.append(module)
 
     logging.info("Workers active and waiting for input")
+    return result
     
 if __name__ == '__main__':
     import argparse
