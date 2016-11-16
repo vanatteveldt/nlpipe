@@ -10,7 +10,7 @@ class Module(object):
         """Process the given text and return the result"""
         raise NotImplementedError()
 
-    def convert(self, result, format):
+    def convert(self, id, result, format):
         """Convert the given result to the given format (e.g. 'xml'), if possible or raise an exception if not"""
         raise ValueError("Module {self.name} results cannot be converted to {format}".format(**locals()))
 

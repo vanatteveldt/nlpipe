@@ -39,7 +39,7 @@ class CoreNLPLemmatizer(Module):
             raise Exception("Error calling corenlp at {url}: {res.status_code}\n{res.content}".format(**locals()))
         return res.content.decode("utf-8")
 
-    def convert(self, result, format):
+    def convert(self, id, result, format):
         assert format in ["csv"]
         try:
             doc = Document(result.encode("utf-8"))
@@ -49,11 +49,11 @@ class CoreNLPLemmatizer(Module):
 
         s = StringIO()
         w = csv.writer(s)
-        w.writerow(["sentence", "offset", "word", "lemma", "POS", "POS1", "ner"])
+        w.writerow(["id", "sentence", "offset", "word", "lemma", "POS", "POS1", "ner"])
         
         for sent in doc.sentences:
             for t in sent.tokens:
-                w.writerow([sent.id, t.character_offset_begin, t.word, t.lemma,
+                w.writerow([id, sent.id, t.character_offset_begin, t.word, t.lemma,
                             t.pos, POSMAP[t.pos], t.ner])
         return s.getvalue()
     

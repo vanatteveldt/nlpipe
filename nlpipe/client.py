@@ -181,7 +181,7 @@ class FSClient(Client):
         if status == 'DONE':
             result = self._read(module, 'DONE', id)
             if format is not None:
-                result = get_module(module).convert(result, format)
+                result = get_module(module).convert(id, result, format)
             return result
         if status == 'ERROR':
             raise Exception(self._read(module, 'ERROR', id))
