@@ -4,7 +4,7 @@ import logging
 from nose.tools import assert_equal
 from unittest import SkipTest
 from nlpipe.modules.frog import FrogLemmatizer
-from tests.tools import _check_status
+from tests.tools import check_status
 
 
 def test_process():
@@ -14,7 +14,7 @@ def test_process():
     sudo docker run -dp 9887:9887 proycon/lamachine frog -S 9887 --skip=pm
     """
     c = FrogLemmatizer()
-    _check_status(c)
+    check_status(c)
     result = c.process("Nederlandse woordjes")
     print(result)
     r = list(csv.DictReader(StringIO(result)))

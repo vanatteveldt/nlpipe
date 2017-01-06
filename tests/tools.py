@@ -1,7 +1,8 @@
 from unittest import SkipTest
 import logging
 
-def _check_status(module):
+
+def check_status(module):
     try:
         module.check_status()
     except Exception as e:
