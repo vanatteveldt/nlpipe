@@ -65,6 +65,28 @@ $ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper result 0x54b0c58c7ce9f2
 THIS IS A TEST
 ```
 
+Example Setups
+---
+
+CoreNLP lemmatize
+===
+
+To setup corenlp lemmatize and nlpipe, use:
+
+```{sh}
+$ docker run --name corenlp -dp 9000:9000 chilland/corenlp-docker 
+$ docker run --name nlpipe --link corenlp:corenlp -e "CORENLP_HOST=http://corenlp:9000" -dp 5001:5001 vanatteveldt/nlpipe
+```
+And e.g. lemmatize a test sentence:
+
+```{sh}
+$ docker exec -it nlpipe python -m nlpipe.client /tmp/nlpipe-data corenlp_lemmatize process_inline --format=csv 'this is a test'
+id,sentence,offset,word,lemma,POS,POS1,ner
+0x54b0c58c7ce9f2a8b551351102ee0938,1,0,this,this,DT,D,O
+0x54b0c58c7ce9f2a8b551351102ee0938,1,5,is,be,VBZ,V,O
+0x54b0c58c7ce9f2a8b551351102ee0938,1,8,a,a,DT,D,O
+0x54b0c58c7ce9f2a8b551351102ee0938,1,10,test,test,NN,N,O
+```
 
 Storage directory layout
 ===
