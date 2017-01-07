@@ -16,7 +16,7 @@ def test_process():
     result = c.process("two words")
     assert_in("<lemma>word</lemma>", result)
     
-    tokens = list(csv.DictReader(StringIO(c.convert(result, format="csv"))))
+    tokens = list(csv.DictReader(StringIO(c.convert(1, result, format="csv"))))
     assert_equal(len(tokens), 2)
     assert_equal(tokens[1]['lemma'], "word")
     

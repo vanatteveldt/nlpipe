@@ -24,6 +24,8 @@ CMD_TOKENIZE = ["Tokenization/tok"]
 
 
 class AlpinoParser(Module):
+    name = "alpino"
+
     def check_status(self):
         alpino_home = os.environ['ALPINO_HOME']
         if not os.path.exists(alpino_home):

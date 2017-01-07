@@ -1,3 +1,6 @@
+from typing import Iterable
+
+
 class Module(object):
     """Abstract base class for NLPipe modules"""
     name = None
@@ -25,14 +28,16 @@ class UnknownModuleError(ValueError):
 
 _known_modules = {}
 
-def register_module(module):
+
+def register_module(module: Module):
     """Register this module in the nlpipe.module.known_modules"""
     if module.name in _known_modules:
         raise ValueError("Module with name {module.name} already registered: {}"
                          .format(_known_modules[module.name], **locals()))
     _known_modules[module.name] = module
-    
-def get_module(name):
+
+
+def get_module(name: str) -> Module:
     """Get a module instance corresponding to the given module name"""
     try:
         module_class = _known_modules[name]
@@ -41,8 +46,10 @@ def get_module(name):
                          .format(list(_known_modules.keys()), **locals()))
     return module_class()
 
-def known_modules():
+
+def known_modules() -> Iterable[Module]:
     """Get all known modules"""
+    # noinspection PyUnresolvedReferences
+    import nlpipe.modules  # forces registration
     for name in _known_modules:
         yield get_module(name)
-        

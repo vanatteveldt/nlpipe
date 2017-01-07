@@ -13,7 +13,7 @@ def test_proces():
     assert_equal(TestUpper().process("test"), "TEST")
 
 def test_convert():
-    assert_equal(json.loads(TestUpper().convert("TEXT", "json")), {'result': 'TEXT', 'status': 'OK'})
-    assert_raises(Exception, TestUpper().convert, "TEXT", "unknown-format")
+    assert_equal(json.loads(TestUpper().convert(1, "TEXT", "json")), {'result': 'TEXT', 'status': 'OK'})
+    assert_raises(Exception, TestUpper().convert, 1, "TEXT", "unknown-format")
     
     

@@ -4,5 +4,7 @@ MAINTAINER Wouter van Atteveldt (wouter@vanatteveldt.com)
 EXPOSE 5001
 
 RUN pip3 install -e git+git://github.com/vanatteveldt/nlpipe.git#egg=nlpipe #redo
-CMD ["python", "-m", "nlpipe.restserver", "-p", "5001", "-H", "0.0.0.0", "/tmp/nlpipe-data", "corenlp_lemmatize", "test_upper"]
+ENV NLPIPE_HOST="0.0.0.0" NLPIPE_PORT=5001 NLPIPE_DIR=/tmp/nlpipe-data
+ENTRYPOINT ["python", "-m"]
+CMD ["nlpipe.restserver", "-vw"]
 
