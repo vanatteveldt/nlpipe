@@ -284,7 +284,8 @@ def _get_client(servername):
 if __name__ == '__main__':
     import argparse
     import sys
-    
+    import nlpipe.modules
+
     parser = argparse.ArgumentParser()
     parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("module", help="Module name")
