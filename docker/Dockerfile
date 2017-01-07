@@ -5,6 +5,5 @@ EXPOSE 5001
 
 RUN pip3 install -e git+git://github.com/vanatteveldt/nlpipe.git#egg=nlpipe #redo3
 ENV NLPIPE_HOST="0.0.0.0" NLPIPE_PORT=5001 NLPIPE_DIR=/tmp/nlpipe-data
-ENTRYPOINT ["python", "-m"]
-CMD ["nlpipe.restserver", "-vw"]
+CMD ["python", "-m", "nlpipe.restserver", "-vw"]
 
