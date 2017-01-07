@@ -7,7 +7,7 @@ import subprocess
 
 import requests
 
-from nlpipe.module import Module, get_module
+from nlpipe.module import Module, get_module, known_modules
 
 # Status definitions and subdir names
 STATUS = {"PENDING": "queue",
@@ -120,8 +120,10 @@ class FSClient(Client):
 
     def __init__(self, result_dir):
         self.result_dir = result_dir
+        for module in known_modules():
+            self._check_dirs(module.name)
 
-    def _check_dirs(self, module):
+    def _check_dirs(self, module: str):
         for subdir in STATUS.values():
             dirname = os.path.join(self.result_dir, module, subdir)
             try:
@@ -218,6 +220,7 @@ class FSClient(Client):
         if status in ('STARTED', 'DONE'):
             self._delete(module, status, id)
 
+
 class HTTPClient(Client):
     """
     NLPipe client that connects to the REST server
@@ -230,7 +233,7 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         res = requests.head(url)
         if 'Status' in res.headers:
-            return(res.headers['Status'])
+            return res.headers['Status']
         raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
                         .format(**locals()))
         
