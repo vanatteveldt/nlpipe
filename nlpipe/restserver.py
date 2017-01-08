@@ -24,7 +24,8 @@ def post_task(module):
     except UnknownModuleError as e:
         return str(e), 404
     doc = request.get_data().decode('UTF-8')
-    id = app.client.process(module, doc)
+    id = request.args.get("id")
+    id = app.client.process(module, doc, id=id)
     resp = Response(id+"\n", status=202)
     resp.headers['Location'] = '/api/modules/{module}/{id}'.format(**locals())
     resp.headers['ID'] = id

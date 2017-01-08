@@ -237,8 +237,10 @@ class HTTPClient(Client):
         raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
                         .format(**locals()))
         
-    def process(self, module, doc):
+    def process(self, module, doc, id=None):
         url = "{self.server}/api/modules/{module}/".format(**locals())
+        if id is not None:
+            url = "{url}?id={id}".format(**locals())
         res = requests.post(url, data=doc)
         if res.status_code != 202:
             raise Exception("Error on processing doc with {module}; return code: {res.status_code}:\n{res.text}"
