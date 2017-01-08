@@ -97,8 +97,7 @@ if __name__ == '__main__':
     if args.workers is not None:
         module_names = args.workers or [m.name for m in known_modules()]
         logging.debug("Starting workers: {module_names}".format(**locals()))
-        for module in run_workers(app.client, module_names):
-            app.client._check_dirs(module.name)
-            
+        run_workers(app.client, module_names)
+
     logging.debug("Serving from {args.directory}".format(**locals()))
     app.run(port=port, host=host, debug=args.debug)

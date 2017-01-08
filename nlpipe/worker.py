@@ -2,8 +2,10 @@ import time
 import sys
 import subprocess
 import logging
+from typing import Iterable
 
 from nlpipe import client
+from nlpipe.client import Client
 from nlpipe.module import get_module
 
 from multiprocessing import Process
@@ -52,8 +54,9 @@ def _import(name):
     if result is None:
         raise ValueError("Cannot import {name!r}".format(**locals()))
     return result
-    
-def run_workers(client, modules):
+
+
+def run_workers(client: Client, modules: Iterable[str]) -> Iterable[Worker]:
     """
     Run the given workers as separate processes
     :param modules: names of the modules (module name or fully qualified class name)
@@ -61,7 +64,7 @@ def run_workers(client, modules):
     # import built-in workers
     import nlpipe.modules
     # create and start workers
-    result = [] # don't yield, result can be ignored silently
+    result = []  # don't yield, result can be ignored silently
     for module_class in modules:
         if "." in module_class:
             module = _import(module_class)()
@@ -86,5 +89,5 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     
-    client = client._get_client(args.server)
+    client = client.get_client(args.server)
     run_workers(client, args.modules)

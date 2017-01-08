@@ -229,7 +229,7 @@ class HTTPClient(Client):
     def __init__(self, server="http://localhost:5000"):
         self.server = server
 
-    def status(self, module, id):
+    def status(self, module: str, id: str) -> str:
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         res = requests.head(url)
         if 'Status' in res.headers:
@@ -266,7 +266,6 @@ class HTTPClient(Client):
                             .format(**locals()))
         return res.headers['ID'], res.text
 
-
     def store_result(self, module, id, result):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         res = requests.put(url, data=result)
@@ -275,7 +274,8 @@ class HTTPClient(Client):
             raise Exception("Error on getting a task for {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
 
-def _get_client(servername):
+
+def get_client(servername):
     if servername.startswith("http:") or servername.startswith("https:"):
         logging.getLogger('requests').setLevel(logging.WARNING)
         logging.debug("Connecting to REST server at {servername}".format(**locals()))
@@ -314,7 +314,7 @@ if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG if args.pop('verbose', False) else logging.INFO,
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     
-    client = _get_client(args.pop('server'))
+    client = get_client(args.pop('server'))
     
     for doc_arg in ('doc', 'result'):
         if args.get(doc_arg) == '-':
