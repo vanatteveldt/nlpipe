@@ -270,10 +270,11 @@ class HTTPClient(Client):
 
     def store_result(self, module, id, result):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
-        res = requests.put(url, data=result)
+        data = result.encode("utf-8")
+        res = requests.put(url, data=data)
 
         if res.status_code != 204:
-            raise Exception("Error on getting a task for {module}; return code: {res.status_code}:\n{res.text}"
+            raise Exception("Error on storing result for {module}:{id}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
 
 

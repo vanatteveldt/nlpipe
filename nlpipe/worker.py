@@ -56,10 +56,12 @@ def _import(name):
     return result
 
 
-def run_workers(client: Client, modules: Iterable[str]) -> Iterable[Worker]:
+def run_workers(client: Client, modules: Iterable[str], nprocesses:int=1) -> Iterable[Worker]:
     """
     Run the given workers as separate processes
+    :param client: a nlpipe.client.Client object
     :param modules: names of the modules (module name or fully qualified class name)
+    :param nprocesses: Number of processes per module
     """
     # import built-in workers
     import nlpipe.modules
@@ -70,8 +72,9 @@ def run_workers(client: Client, modules: Iterable[str]) -> Iterable[Worker]:
             module = _import(module_class)()
         else:
             module = get_module(module_class)
-        logging.debug("Starting worker {module}".format(**locals()))
-        Worker(client=client, module=module).start()
+        for i in range(1, nprocesses+1):
+            logging.debug("[{i}/{nprocesses}] Starting worker {module}".format(**locals()))
+            Worker(client=client, module=module).start()
         result.append(module)
 
     logging.info("Workers active and waiting for input")
@@ -83,6 +86,7 @@ if __name__ == '__main__':
     parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("modules", nargs="+", help="Class names of module(s) to run")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
+    parser.add_argument("--processes", "-p", help="Number of processes per worker", type=int, default=1)
 
     args = parser.parse_args()
 
@@ -90,4 +94,4 @@ if __name__ == '__main__':
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     
     client = client.get_client(args.server)
-    run_workers(client, args.modules)
+    run_workers(client, args.modules, nprocesses=args.processes)
