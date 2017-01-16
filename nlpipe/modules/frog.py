@@ -52,5 +52,22 @@ class FrogLemmatizer(Module):
         for line in self.call_frog(text):
             w.writerow(list(line))
         return s.getvalue()
-    
+
+    def convert(self, id, result, format):
+        assert format in ["csv"]
+        # add id to result
+        r = csv.reader(StringIO(result), delimiter=',')
+
+        out = StringIO()
+        w = csv.writer(out)
+
+        header = next(r)
+        w.writerow(["id"] + header)
+
+        for row in r:
+            w.writerow([id] + row)
+
+        return out.getvalue()
+
+
 FrogLemmatizer.register()

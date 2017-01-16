@@ -61,16 +61,17 @@ class Client(object):
         """
         raise NotImplementedError()
 
-    def process_inline(self, module, doc, format=None):
+    def process_inline(self, module, doc, format=None, id=None):
         """
         Process the given document, use cached version if possible, wait and return result
         :param module: Module name
         :param doc: A document (string)
         :return: The result of processing (string)
         """
-        id = get_id(doc)
+        if id is None:
+            id = get_id(doc)
         if self.status(module, id) == 'UNKNOWN':
-            self.process(module, doc)
+            self.process(module, doc, id)
         while True:
             status = self.status(module, id)
             if status in ('DONE', 'ERROR'):
