@@ -35,7 +35,7 @@ class FrogLemmatizer(Module):
         """
         Call frog on the text and return (sent, offset, word, lemma, pos, morphofeat) tuples
         """
-        frogclient = FrogClient(self.host, self.port, returnall=True)
+        frogclient = FrogClient(self.host, self.port, returnall=True, timeout=600)
         sent = 1
         offset = 0
         for word, lemma, morph, morphofeat, ner, chunk, _p1, _p2 in frogclient.process(text):
