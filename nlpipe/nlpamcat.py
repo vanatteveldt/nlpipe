@@ -1,4 +1,6 @@
 import argparse
+import json
+from collections import Counter
 
 from amcatclient import amcatclient
 from nlpipe.client import get_client
@@ -7,10 +9,12 @@ import logging
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("amcatserver", help="AmCAT Server hostname")
-    parser.add_argument("project", help="AmCAT Project ID")
-    parser.add_argument("articleset", help="AmCAT Article Set ID")
+    parser.add_argument("project", help="AmCAT Project ID", type=int)
+    parser.add_argument("articleset", help="AmCAT Article Set ID", type=int)
     parser.add_argument("nlpipeserver", help="NLPipe Server hostname or directory location")
     parser.add_argument("module", help="Module name")
+    parser.add_argument("action", help="NLPipe action", choices=["process", "status", "result"])
+    parser.add_argument("--format", "-f", help="Result format")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
     args = parser.parse_args()
 
@@ -18,21 +22,35 @@ if __name__ == '__main__':
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     logging.getLogger("requests").setLevel(logging.WARNING)
 
-    print(dir(args))
+    logging.debug("Will {args.action} at nlpipe {args.nlpipeserver} all articles "
+                  "from {args.amcatserver} set {args.articleset}".format(**locals()))
+
     # connect to AmCAT and NLPipe
     logging.debug("Getting article IDS from {args.amcatserver} set {args.project}:{args.articleset}".format(**locals()))
     a = amcatclient.AmcatAPI(args.amcatserver)
-    ids = [x['id'] for x in a.get_articles(args.project, args.articleset, columns=['id'])]
-    logging.debug("Got {} IDS".format(len(ids)))
+    ids = [str(x['id']) for x in a.get_articles(args.project, args.articleset, columns=['id'])]
 
+    # Get status of articles
+    logging.debug("Getting of {} IDS".format(len(ids)))
     c = get_client(args.nlpipeserver)
-    status = {id: c.status(args.module, str(id)) for id in ids}
-    todo = [id for (id, status) in status.items() if status == "UNKNOWN"]
-    logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
-                 .format(len(todo), **locals()))
+    status = c.bulk_status(args.module, ids)
 
-    for art in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100):
-        text = "{headline}\n\n{text}".format(**art)
-        c.process(args.module, text, id=str(art['id']))
+    if args.action == "process":
+        todo = [id for (id, status) in status.items() if status == "UNKNOWN"]
+        logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
+                     .format(len(todo), **locals()))
 
-    logging.info("Done! Assigned {} articles".format(len(todo)))
+        for art in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100):
+            text = "{headline}\n\n{text}".format(**art)
+            c.process(args.module, text, id=str(art['id']))
+
+        logging.info("Done! Assigned {} articles".format(len(todo)))
+    if args.action == "status":
+        for k, v in Counter(status.values()).items():
+            print("{k}: {v}".format(**locals()))
+    if args.action == 'result':
+        toget = [id for (id, status) in status.items() if status == "DONE"]
+        kargs = {'format': args.format} if args.format else {}
+        results = c.bulk_result(args.module, toget, **kargs)
+        print(json.dumps(results, indent=4))
+
