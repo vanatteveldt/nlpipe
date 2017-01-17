@@ -1,4 +1,5 @@
 import hashlib
+import json
 import time
 import os.path
 import errno
@@ -51,6 +52,7 @@ class Client(object):
         :return: any of 'UNKNOWN', 'PENDING', 'STARTED', 'DONE', 'ERROR'
         """
         raise NotImplementedError()
+
 
     def result(self, module, id, format=None):
         """Get processing result, optionally converted to a specified format
@@ -113,6 +115,23 @@ class Client(object):
         :param result: Result (string) describing the error
         """
         raise NotImplementedError()
+
+
+    def bulk_status(self, module, ids):
+        """Get processing status of multiple ids
+        :param module: Module name
+        :param ids: Task IDs
+        :return: a dict of {id: status}
+        """
+        return {id: self.status(module, id) for id in ids}
+
+    def bulk_result(self, module, ids, format=None):
+        """Get results for multiple ids
+        :param module: Module name
+        :param ids: Task IDs
+        :return: a dict of {id: result}
+        """
+        return {id: self.result(module, id, format=format) for id in ids}
 
 class FSClient(Client):
     """
@@ -237,7 +256,8 @@ class HTTPClient(Client):
             return res.headers['Status']
         raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
                         .format(**locals()))
-        
+
+
     def process(self, module, doc, id=None):
         url = "{self.server}/api/modules/{module}/".format(**locals())
         if id is not None:
@@ -278,6 +298,26 @@ class HTTPClient(Client):
             raise Exception("Error on storing result for {module}:{id}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
 
+    def bulk_status(self, module, ids):
+        url = "{self.server}/api/modules/{module}/bulk/status".format(**locals())
+        res = requests.post(url, json=ids)
+        if res.status_code != 200:
+            raise Exception("Error on getting bulk status for {module}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        return res.json()
+
+    def bulk_result(self, module, ids, format=None):
+        url = "{self.server}/api/modules/{module}/bulk/result".format(**locals())
+        if format is not None:
+            url = "{url}?format={format}".format(**locals())
+        res = requests.post(url, json=ids)
+        if res.status_code != 200:
+            raise Exception("Error on getting bulk results for {module}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        return res.json()
+
+
+
 
 def get_client(servername):
     if servername.startswith("http:") or servername.startswith("https:"):
@@ -302,10 +342,13 @@ if __name__ == '__main__':
 
     actions = {name: action_parser.add_parser(name) 
                for name in ('status', 'result', 'check', 'process', 'process_inline',
-                              'store_result', 'store_error')}
+                            'bulk_status', 'bulk_result', 'store_result', 'store_error')}
     for action in 'status', 'result', 'store_result', 'store_error':
         actions[action].add_argument('id', help="Task ID")
-    for action in 'result', 'process_inline':
+
+    for action in 'bulk_status', 'bulk_result':
+        actions[action].add_argument('ids', nargs="+", help="Task IDs")
+    for action in 'result', 'process_inline', 'bulk_result':
         actions[action].add_argument("--format", help="Optional output format to retrieve")
     for action in 'process', 'process_inline':
         actions[action].add_argument('doc', help="Document to process (use - to read from stdin")
