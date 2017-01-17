@@ -97,28 +97,32 @@ def interpret_parse(parse):
 
 def interpret_token(sid, lemma, word, begin, _end, major_pos, _pos, full_pos):
     """Convert to raw alpino token into a (word, lemma, begin, pos1) tuple"""
-    pos1 = POSMAP[major_pos]
+    if major_pos not in POSMAP:
+        logging.warn("UNKNOWN POS: {major_pos}".format(**locals()))
+    pos1 = POSMAP.get(major_pos, '?')
     return sid, int(begin), word, lemma, pos1
 
 
-POSMAP = {"pronoun": 'O',
+
+POSMAP = {"pronoun": 'O', "pron": 'O',
           "verb": 'V',
           "noun": 'N',
-          "preposition": 'P',
-          "determiner": "D",
-          "comparative": "C",
+          "preposition": 'P', "prep": 'P',
+          "determiner": "D",  "det": "D",
+          "comparative": "C",  "comp": "C",
           "adverb": "B",
           'adv': 'B',
           "adj": "A",
           "complementizer": "C",
           "punct": ".",
           "conj": "C",
+          "vg": 'C', "prefix": 'C',  # not quite sure what vg stands for, sorry
           "tag": "?",
-          "particle": "R",
+          "particle": "R",  "fixed": 'R',
           "name": "M",
           "part": "R",
           "intensifier": "B",
-          "number": "Q",
+          "number": "Q", "num": 'Q',
           "cat": "Q",
           "n": "Q",
           "reflexive":  'O',
