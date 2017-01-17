@@ -81,6 +81,18 @@ def bulk_status(module):
     return json.dumps(statuses, indent=4), 200
 
 
+@app.route('/api/modules/<module>/bulk/result', methods=['POST'])
+def bulk_result(module):
+    try:
+        ids = request.get_json()
+        if not ids:
+            raise ValueError("Empty request")
+    except:
+        return "Error: Please provive bulk IDs as a json list\nd ", 400
+    format = request.args.get('format', None)
+    results = app.client.bulk_result(module, ids, format=format)
+    return json.dumps(results, indent=4), 200
+
 if __name__ == '__main__':
     import argparse
     import tempfile
