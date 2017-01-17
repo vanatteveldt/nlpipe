@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from flask import Flask, request, make_response, Response, abort
@@ -31,12 +32,14 @@ def post_task(module):
     resp.headers['ID'] = id
     return resp
 
+
 @app.route('/api/modules/<module>/<id>', methods=['HEAD'])
 def task_status(module, id):
     status = app.client.status(module, id)
     resp = Response(status=STATUS_CODES[status])
     resp.headers['Status'] = status
     return resp
+
 
 @app.route('/api/modules/<module>/<id>', methods=['GET'])
 def result(module, id):
@@ -46,7 +49,6 @@ def result(module, id):
     except FileNotFoundError:
         return 'Error: Unknown document: {module}/{id}\n'.format(**locals()), 404
     return result, 200
-
 
 
 @app.route('/api/modules/<module>/', methods=['GET'])
@@ -65,6 +67,19 @@ def put_results(module, id):
     doc = request.get_data().decode('UTF-8')
     app.client.store_result(module, id, doc)
     return '', 204
+
+
+@app.route('/api/modules/<module>/bulk/status', methods=['POST'])
+def bulk_status(module):
+    try:
+        ids = request.get_json()
+        if not ids:
+            raise ValueError("Empty request")
+    except:
+        return "Error: Please provive bulk IDs as a json list\nd ", 400
+    statuses = {id: app.client.status(module, str(id)) for id in ids}
+    return json.dumps(statuses, indent=4), 200
+
 
 if __name__ == '__main__':
     import argparse
