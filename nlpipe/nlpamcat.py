@@ -52,5 +52,11 @@ if __name__ == '__main__':
         toget = [id for (id, status) in status.items() if status == "DONE"]
         kargs = {'format': args.format} if args.format else {}
         results = c.bulk_result(args.module, toget, **kargs)
-        print(json.dumps(results, indent=4))
+        if args.format == "csv":
+            for i, csv_bytes in enumerate(results.values()):
+                if i != 0 and "\n" in csv_bytes:
+                    csv_bytes = csv_bytes.split("\n", 1)[1]
+                print(csv_bytes.strip())
+        else:
+            print(json.dumps(results, indent=4))
 
