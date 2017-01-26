@@ -6,6 +6,7 @@ import errno
 import logging
 import subprocess
 
+import itertools
 import requests
 
 from nlpipe.module import Module, get_module, known_modules
@@ -133,6 +134,19 @@ class Client(object):
         """
         return {id: self.result(module, id, format=format) for id in ids}
 
+    def bulk_process(self, module, docs, ids=None):
+        """
+        Add multiple documents to the processing queue
+        :param module:  Module name
+        :param docs: Documents to process
+        :param ids: Optional sequence of explicit IDs corresponding to the documents
+        :return: a sequence of IDs
+        """
+        if ids is None:
+            ids = itertools.repeat(None)
+        return [self.process(module, doc, id=id) for (doc, id) in zip(docs, ids)]
+
+
 class FSClient(Client):
     """
     NLPipe client that relies on direct filesystem access (e.g. on local machine or over NFS)
@@ -257,7 +271,6 @@ class HTTPClient(Client):
         raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
                         .format(**locals()))
 
-
     def process(self, module, doc, id=None):
         url = "{self.server}/api/modules/{module}/".format(**locals())
         if id is not None:
@@ -316,8 +329,14 @@ class HTTPClient(Client):
                             .format(**locals()))
         return res.json()
 
-
-
+    def bulk_process(self, module, docs, ids=None):
+        url = "{self.server}/api/modules/{module}/bulk/process".format(**locals())
+        body = list(docs) if ids is None else dict(zip(ids, docs))
+        res = requests.post(url, json=body)
+        if res.status_code != 200:
+            raise Exception("Error on bulk processfor {module}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+        return res.json()
 
 def get_client(servername):
     if servername.startswith("http:") or servername.startswith("https:"):

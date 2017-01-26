@@ -59,5 +59,37 @@ def test_server():
         # client: retrieve formatted results
         x = client.get(task_url+"?format=json")
         assert_equal(json.loads(x.data.decode('UTF-8')),
-                     {'result': 'THIS IS A TEST', 'status': 'OK'})
-        
+                     {'result': 'THIS IS A TEST', 'status': 'OK', 'id': id})
+
+
+def test_bulk():
+    """Test bulk operations"""
+    with TemporaryDirectory() as root:
+        app.client = FSClient(root)
+        client = app.test_client()
+        url_base = "/api/modules/test_upper/"
+        def post_json(endpoint, data):
+            result = client.post(url_base + endpoint, data=json.dumps(data))
+            return json.loads(result.data.decode('UTF-8'))
+
+        ids = post_json("bulk/process", {"1": "test1", "2": "test2", "3": "test3"})
+        assert_equal(set(ids), {"1", "2", "3"})
+
+        res = post_json("bulk/status", list(ids))
+        assert_equal(res, {id: "PENDING" for id in ids})
+
+        id1 = client.get(url_base).headers.get('ID')
+        id2 = client.get(url_base).headers.get('ID')
+        client.put(url_base + id1, data="TEST1")
+        client.put(url_base + id2, data="TEST2")
+
+        todo = next(id for id in ids if id not in {id1, id2})
+        res = post_json("bulk/status", list(ids))
+        assert_equal(res, {id1: "DONE", id2: "DONE", todo: "PENDING"})
+
+        res = post_json("bulk/result", [id1, id2])
+        assert_equal(res, {id1: "TEST1", id2: "TEST2"})
+
+        # test process without id
+        ids = post_json("bulk/process", ["test1", "test2"])
+        assert_equal(len(ids), 2)

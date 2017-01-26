@@ -72,7 +72,7 @@ def put_results(module, id):
 @app.route('/api/modules/<module>/bulk/status', methods=['POST'])
 def bulk_status(module):
     try:
-        ids = request.get_json()
+        ids = request.get_json(force=True)
         if not ids:
             raise ValueError("Empty request")
     except:
@@ -84,7 +84,7 @@ def bulk_status(module):
 @app.route('/api/modules/<module>/bulk/result', methods=['POST'])
 def bulk_result(module):
     try:
-        ids = request.get_json()
+        ids = request.get_json(force=True)
         if not ids:
             raise ValueError("Empty request")
     except:
@@ -92,6 +92,23 @@ def bulk_result(module):
     format = request.args.get('format', None)
     results = app.client.bulk_result(module, ids, format=format)
     return json.dumps(results, indent=4), 200
+
+
+@app.route('/api/modules/<module>/bulk/process', methods=['POST'])
+def bulk_process(module):
+    try:
+        docs = request.get_json(force=True)
+        if not docs:
+            raise ValueError("Empty request")
+    except:
+        logging.exception("bulk/process: Error parsing json {}".format(repr(request.data)[:20]))
+        return "Error: Please provive bulk docs as a json list or {id:doc, } dict\n ", 400
+    if isinstance(docs, list):
+        docs, ids = docs, None
+    else:
+        docs, ids = docs.values(), docs.keys()
+    ids = app.client.bulk_process(module, docs, ids=ids)
+    return json.dumps(ids, indent=4), 200
 
 if __name__ == '__main__':
     import argparse
