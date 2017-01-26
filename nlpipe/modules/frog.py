@@ -55,19 +55,34 @@ class FrogLemmatizer(Module):
 
     def convert(self, id, result, format):
         assert format in ["csv"]
-        # add id to result
+        # add id and pos column to result
         r = csv.reader(StringIO(result), delimiter=',')
-
         out = StringIO()
         w = csv.writer(out)
-
         header = next(r)
-        w.writerow(["id"] + header)
+        w.writerow(["id"] + header + ["pos"])
 
         for row in r:
-            w.writerow([id] + row)
-
+            morphofeat = row[4].split("(")[0]
+            pos = _POSMAP[morphofeat]
+            w.writerow([id] + row + [pos])
         return out.getvalue()
 
 
 FrogLemmatizer.register()
+
+
+_POSMAP = {"VZ" : "P",
+          "N" : "N",
+          "ADJ" : "G",
+          "LET" : "O",
+          "VNW" : "O",
+          "LID" : "D",
+          "SPEC" : "R",
+          "TW" : "O",
+          "WW" : "V",
+          "BW" : "A",
+          "VG" : "C",
+          "TSW" : "O",
+          "MWU" : "O",
+          "" : "O"}
