@@ -190,7 +190,7 @@ class FSClient(Client):
         if id is None:
             return dirname
         else:
-            return os.path.join(dirname, id)
+            return os.path.join(dirname, str(id))
 
     def check(self, module):
         self._check_dirs(self, module)

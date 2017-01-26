@@ -1,7 +1,7 @@
 import json
 import os
 import sys
-from flask import Flask, request, make_response, Response, abort
+from flask import Flask, request, make_response, Response, abort, jsonify
 from nlpipe.client import FSClient
 from nlpipe.module import UnknownModuleError, get_module, known_modules
 from nlpipe.worker import run_workers
@@ -91,7 +91,7 @@ def bulk_result(module):
         return "Error: Please provive bulk IDs as a json list\nd ", 400
     format = request.args.get('format', None)
     results = app.client.bulk_result(module, ids, format=format)
-    return json.dumps(results, indent=4), 200
+    return jsonify(results)
 
 
 @app.route('/api/modules/<module>/bulk/process', methods=['POST'])
@@ -108,7 +108,7 @@ def bulk_process(module):
     else:
         docs, ids = docs.values(), docs.keys()
     ids = app.client.bulk_process(module, docs, ids=ids)
-    return json.dumps(ids, indent=4), 200
+    return jsonify(ids)
 
 if __name__ == '__main__':
     import argparse
