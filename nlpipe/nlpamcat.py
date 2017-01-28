@@ -40,9 +40,11 @@ if __name__ == '__main__':
         logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
                      .format(len(todo), **locals()))
 
-        for art in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100):
-            text = "{headline}\n\n{text}".format(**art)
-            c.process(args.module, text, id=str(art['id']))
+        for arts in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100, yield_pages=True):
+            ids = [a['id'] for a in arts]
+            texts = ["{headline}\n\n{text}".format(**a) for a in arts]
+            logging.debug("Assigning {} articles".format(len(ids)))
+            c.bulk_process(args.module, texts, ids=ids)
 
         logging.info("Done! Assigned {} articles".format(len(todo)))
     if args.action == "status":

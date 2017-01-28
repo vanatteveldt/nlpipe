@@ -275,7 +275,7 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/".format(**locals())
         if id is not None:
             url = "{url}?id={id}".format(**locals())
-        res = requests.post(url, data=doc)
+        res = requests.post(url, data=doc.encode("utf-8"))
         if res.status_code != 202:
             raise Exception("Error on processing doc with {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
