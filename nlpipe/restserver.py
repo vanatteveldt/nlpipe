@@ -9,7 +9,8 @@ from nlpipe.module import UnknownModuleError, get_module, known_modules
 from nlpipe.worker import run_workers
 import logging
 
-app = Flask('NLPipe')
+
+app = Flask('NLPipe', template_folder=os.path.dirname(__file__))
 
 STATUS_CODES = {
     'UNKNOWN': 404,

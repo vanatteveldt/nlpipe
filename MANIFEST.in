@@ -1,1 +1,1 @@
-recursive-include nlpipe/templates *
+recursive-include nlpipe/nlpipe *
