@@ -30,7 +30,7 @@ def index():
     mods = {mod: dict(app.client.statistics(mod.name)) for mod in mods}
     return render_template('index.html', **locals())
 
-@app.route('/doc')
+@app.route('/apidoc')
 def doc():
     return auto.html()
 
