@@ -4,11 +4,13 @@ from distutils.core import setup
 
 setup(
     name="nlpipe",
-    version="0.41",
+    version="0.42",
     description="Simple NLP Pipelinining based on a file system",
     author="Wouter van Atteveldt",
     author_email="wouter@vanatteveldt.com",
     packages=["nlpipe"],
+    include_package_data=True,
+    zip_safe=False,
     keywords = ["NLP", "pipelining"],
     classifiers=[
         "Intended Audience :: Science/Research",

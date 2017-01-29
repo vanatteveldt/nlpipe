@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NLPipe</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+</head>
+<body>
+<div class="container">
+<h1>NLPipe Server</h1>
+This is the index page of the NLPipe REST API server.
+The active worker queues and REST endpoints are shown below.
+See <a href="http://github.com/vanatteveldt/nlpipe">github.com/vanatteveldt/nlpipe</a> for more information.
+<h2>Parameters</h2>
+    <table class="table">
+        <tr>
+            <th>Serving from:</th>
+            <td>{{fsdir}}</td>
+        </tr>
+    </table>
+<h2>Workers</h2>
+    {% set statuses=["PENDING", "STARTED", "DONE", "ERROR"] %}
+    <table class="table">
+        <tr><th>Module</th>
+            {% for status in statuses %}
+            <th>{{status}}</th>
+            {% endfor %}
+        </tr>
+    {% for mod, stats in mods.items() %}
+        <tr>
+            <td>{{mod.name}}</td>
+            {% for status in statuses %}
+                <th>{{stats[status]}}</th>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </table>
+</div>
+</body>
+</html>

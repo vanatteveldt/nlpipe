@@ -2,6 +2,8 @@ import json
 import os
 import sys
 from flask import Flask, request, make_response, Response, abort, jsonify
+from flask.templating import render_template
+
 from nlpipe.client import FSClient
 from nlpipe.module import UnknownModuleError, get_module, known_modules
 from nlpipe.worker import run_workers
@@ -17,6 +19,13 @@ STATUS_CODES = {
     'ERROR': 500
 }
 
+
+@app.route('/')
+def index():
+    fsdir = app.client.result_dir
+    mods = {mod : dict(app.client.statistics(mod.name)) for mod in known_modules()}
+    print(mods)
+    return render_template('index.html', **locals())
 
 @app.route('/api/modules/<module>/', methods=['POST'])
 def post_task(module):

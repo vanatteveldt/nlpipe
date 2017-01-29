@@ -254,6 +254,13 @@ class FSClient(Client):
         if status in ('STARTED', 'DONE'):
             self._delete(module, status, id)
 
+    def statistics(self, module):
+        """Get number of docs for each status for this module"""
+        for status in STATUS:
+            path = self._filename(module, status)
+            cmd = "ls {path} | wc -l".format(**locals())
+            n = int(subprocess.check_output(cmd, shell=True).decode("utf-8"))
+            yield status, n
 
 class HTTPClient(Client):
     """
