@@ -11,6 +11,8 @@ import logging
 
 
 app = Flask('NLPipe', template_folder=os.path.dirname(__file__))
+from flask.ext.autodoc import Autodoc
+auto = Autodoc(app)
 
 STATUS_CODES = {
     'UNKNOWN': 404,
@@ -26,11 +28,24 @@ def index():
     fsdir = app.client.result_dir
     mods = sorted(known_modules(), key=lambda mod:mod.name)
     mods = {mod: dict(app.client.statistics(mod.name)) for mod in mods}
-    print(mods)
     return render_template('index.html', **locals())
 
+@app.route('/doc')
+def doc():
+    return auto.html()
+
+
 @app.route('/api/modules/<module>/', methods=['POST'])
+@auto.doc()
 def post_task(module):
+    """
+    POST a new task to the NLPipe server.
+    Post body should contain the test to process.
+    You can specify an explicit document id with ?id=<id>
+    Response will be an empty HTTP 202 response with Location and ID headers
+
+    :param module: The name of the module to process with
+    """
     try:
         get_module(module)  # check if module exists
     except UnknownModuleError as e:
@@ -45,7 +60,15 @@ def post_task(module):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['HEAD'])
+@auto.doc()
 def task_status(module, id):
+    """
+    HEAD gets the status of a task as HTTP Status code.
+    Response will also contain a status header.
+
+    :param module: The module name
+    :param id: ID of the task to get status for
+    """
     status = app.client.status(module, id)
     resp = Response(status=STATUS_CODES[status])
     resp.headers['Status'] = status
@@ -53,7 +76,17 @@ def task_status(module, id):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['GET'])
+@auto.doc()
 def result(module, id):
+    """
+    GET the processed result of a task.
+    If processed OK, returns the result as document with HTTP 200
+    If processing failed, returns HTTP 500 with a json document containing the exception
+    If task is unknown or not yet processed, will return 404
+
+    :param module: The module name
+    :param id: ID of the task to get result for
+    """
     format = request.args.get('format', None)
     try:
         result = app.client.result(module, id, format=format)
@@ -66,7 +99,15 @@ def result(module, id):
 
 
 @app.route('/api/modules/<module>/', methods=['GET'])
+@auto.doc()
 def get_task(module):
+    """
+    GET a task to process.
+    This is intended to be called by a worker and will set status of the task to STARTED.
+    Returns the text to process with HTTP headers ID and Location
+
+    :param module: Module name
+    """
     id, doc = app.client.get_task(module)
     if doc is None:
         return 'Queue {module} empty!\n'.format(**locals()), 404
@@ -77,7 +118,17 @@ def get_task(module):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['PUT'])
+@auto.doc()
 def put_results(module, id):
+    """
+    PUT the results of processing.
+    If processing failed, use Content-type: prs.error+text and put the error message or diagnostics
+    This is intended to be callsed by a worker and will set the status of the task to DONE or ERROR.
+
+    :param module:
+    :param id:
+    :return:
+    """
     doc = request.get_data().decode('UTF-8')
     if request.content_type == ERROR_MIME:
         app.client.store_error(module, id, doc)
@@ -87,7 +138,14 @@ def put_results(module, id):
 
 
 @app.route('/api/modules/<module>/bulk/status', methods=['POST'])
+@auto.doc()
 def bulk_status(module):
+    """
+    Bulk method: POST a json list of IDs to get status information from.
+    Returns a json dict of {id: status}
+
+    :param module: The module name
+    """
     try:
         ids = request.get_json(force=True)
         if not ids:
@@ -99,7 +157,14 @@ def bulk_status(module):
 
 
 @app.route('/api/modules/<module>/bulk/result', methods=['POST'])
+@auto.doc()
 def bulk_result(module):
+    """
+    Bulk method: POST a json list of IDs to get results for.
+    Returns a json dict of {id: result}
+
+    :param module: The module name
+    """
     try:
         ids = request.get_json(force=True)
         if not ids:
@@ -112,7 +177,14 @@ def bulk_result(module):
 
 
 @app.route('/api/modules/<module>/bulk/process', methods=['POST'])
+@auto.doc()
 def bulk_process(module):
+    """
+    Bulk method: POST a json list or {id: text} dict containing texts to process
+    Returns a json list of ids
+
+    :param module: The module name
+    """
     try:
         docs = request.get_json(force=True)
         if not docs:
@@ -126,6 +198,11 @@ def bulk_process(module):
         docs, ids = docs.values(), docs.keys()
     ids = app.client.bulk_process(module, docs, ids=ids)
     return jsonify(ids)
+
+
+
+
+
 
 if __name__ == '__main__':
     import argparse
