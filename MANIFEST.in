@@ -1,1 +1,1 @@
-recursive-include yourapplication/templates *
+recursive-include nlpipe/templates *
