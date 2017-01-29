@@ -2,8 +2,8 @@ import json
 from tempfile import TemporaryDirectory
 
 from nlpipe.client import FSClient, get_id
-from nlpipe.restserver import app
-from nose.tools import assert_equal
+from nlpipe.restserver import app, ERROR_MIME
+from nose.tools import assert_equal, assert_raises
 
 from nlpipe.modules.test_upper import TestUpper
 
@@ -60,6 +60,29 @@ def test_server():
         x = client.get(task_url+"?format=json")
         assert_equal(json.loads(x.data.decode('UTF-8')),
                      {'result': 'THIS IS A TEST', 'status': 'OK', 'id': id})
+
+
+def test_error():
+    """Test whether we can put/get errors"""
+    with TemporaryDirectory() as root:
+        app.client = FSClient(root)
+        client = app.test_client()
+        # create task
+        url = "/api/modules/test_upper/"
+        task_url = client.post(url, data="test").headers.get('Location')
+        # get task and put error
+        client.get(url)
+        client.put(task_url, data='sorry', content_type=ERROR_MIME)
+
+        # check status and result
+        x = client.head(task_url)
+        assert_equal(x.status_code, 500)
+        assert_equal(x.headers.get('Status'), 'ERROR')
+        x = client.get(task_url)
+        assert_equal(x.status_code, 500)
+        exc = json.loads(x.data.decode("utf-8"))
+        assert_equal(set(exc.keys()), {"exception_class", "message"})
+        assert_equal(exc['message'], "sorry")
 
 
 def test_bulk():

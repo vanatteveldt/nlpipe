@@ -19,12 +19,13 @@ STATUS_CODES = {
     'DONE': 200,
     'ERROR': 500
 }
-
+ERROR_MIME = 'application/prs.error+text'
 
 @app.route('/')
 def index():
     fsdir = app.client.result_dir
-    mods = {mod : dict(app.client.statistics(mod.name)) for mod in known_modules()}
+    mods = sorted(known_modules(), key=lambda mod:mod.name)
+    mods = {mod: dict(app.client.statistics(mod.name)) for mod in mods}
     print(mods)
     return render_template('index.html', **locals())
 
@@ -58,6 +59,9 @@ def result(module, id):
         result = app.client.result(module, id, format=format)
     except FileNotFoundError:
         return 'Error: Unknown document: {module}/{id}\n'.format(**locals()), 404
+    except Exception as e:
+        result = {"exception_class": type(e).__name__, "message": str(e)}
+        return make_response(jsonify(result), 500)
     return result, 200
 
 
@@ -75,7 +79,10 @@ def get_task(module):
 @app.route('/api/modules/<module>/<id>', methods=['PUT'])
 def put_results(module, id):
     doc = request.get_data().decode('UTF-8')
-    app.client.store_result(module, id, doc)
+    if request.content_type == ERROR_MIME:
+        app.client.store_error(module, id, doc)
+    else:
+        app.client.store_result(module, id, doc)
     return '', 204
 
 

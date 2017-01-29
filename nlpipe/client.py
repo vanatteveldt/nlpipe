@@ -12,6 +12,7 @@ import requests
 from nlpipe.module import Module, get_module, known_modules
 
 # Status definitions and subdir names
+
 STATUS = {"PENDING": "queue",
           "STARTED": "inprogress",
           "DONE": "results",
@@ -56,7 +57,9 @@ class Client(object):
 
 
     def result(self, module, id, format=None):
-        """Get processing result, optionally converted to a specified format
+        """Get processing result, optionally converted to a specified format.
+        If the status is ERROR, the result will be raised as an exception
+
         :param module: Module name
         :param id: A document (string) or task ID
         :param format: (Optional) format to convert to, e.g. 'xml', 'csv', 'json'
@@ -316,6 +319,17 @@ class HTTPClient(Client):
 
         if res.status_code != 204:
             raise Exception("Error on storing result for {module}:{id}; return code: {res.status_code}:\n{res.text}"
+                            .format(**locals()))
+
+
+    def store_error(self, module, id, result):
+        url = "{self.server}/api/modules/{module}/{id}".format(**locals())
+        data = result.encode("utf-8")
+        from nlpipe.restserver import ERROR_MIME
+        headers = {'Content-type': ERROR_MIME}
+        res = requests.put(url, data=data, headers=headers)
+        if res.status_code != 204:
+            raise Exception("Error on storing error for {module}:{id}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
 
     def bulk_status(self, module, ids):

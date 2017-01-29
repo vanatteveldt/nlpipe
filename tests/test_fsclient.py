@@ -45,4 +45,4 @@ def test_pipeline():
         
         # Retrieve results in different format
         result = c.result(m, id1, format='json')
-        assert_equal(json.loads(result), {'result': 'THIS IS A TEST', 'status': 'OK'})
+        assert_equal(json.loads(result), {'id': id1, 'result': 'THIS IS A TEST', 'status': 'OK'})
