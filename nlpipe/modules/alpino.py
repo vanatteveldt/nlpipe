@@ -13,6 +13,7 @@ import os
 import subprocess
 
 import itertools
+import tempfile
 from io import StringIO
 
 from nlpipe.module import Module
@@ -55,7 +56,11 @@ def _call_alpino(command, input):
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                          cwd=alpino_home)
     out, err = [x.decode("utf-8") for x in p.communicate(input.encode("utf-8"))]
-    if not out or 'error' in err:
+    if not out:
+        with tempfile.NamedTemporaryFile(suffix=".txt", delete=False, mode="wb") as f:
+            f.write(input.encode("utf-8"))
+            logging.exception("Error calling Alpino, input file written to {f.name}, command was {command}"
+                              .format(**locals()))
         raise Exception("Problem calling {command}, output was empty. Error: {err!r}".format(**locals()))
     return out
 
