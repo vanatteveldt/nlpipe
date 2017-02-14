@@ -1,16 +1,21 @@
 """
 Wrapper around the RUG Alpino Dependency parser
-The module expects ALPINO_HOME to point at the alpino installation dir
-The module needs the dependencies end_hook, which seems to be missing in the
-'sicstus' builds. The download link below works as of 2014-05-07:
-http://www.let.rug.nl/vannoord/alp/Alpino/binary/versions/Alpino-x86_64-linux-glibc2.5-20214.tar.gz
-See: http://www.let.rug.nl/vannoord/alp/Alpino
+The module expects either ALPINO_HOME to point at the alpino installation dir
+or an alpino server to be running at ALPINO_SERVER (default: localhost:5002)
+
+You can use the following command to get the server running: (see github.com/vanatteveldt/alpinoserver)
+docker run -dp 5002:5002 vanatteveldt/alpino-server
+
+If running alpino locally, note that the module needs the dependencies end_hook, which seems to be missing in
+some builds. See: http://www.let.rug.nl/vannoord/alp/Alpino
 """
 import csv
 import datetime
+import json
 import logging
 import os
 import subprocess
+import requests
 
 import itertools
 import tempfile
@@ -28,16 +33,31 @@ class AlpinoParser(Module):
     name = "alpino"
 
     def check_status(self):
-        alpino_home = os.environ['ALPINO_HOME']
-        if not os.path.exists(alpino_home):
-            raise Exception("Alpino not found at ALPINO_HOME={alpino_home}".format(**locals()))
+        if 'ALPINO_HOME' in os.environ:
+            alpino_home = os.environ['ALPINO_HOME']
+            if not os.path.exists(alpino_home):
+                raise Exception("Alpino not found at ALPINO_HOME={alpino_home}".format(**locals()))
+        else:
+            alpino_server = os.environ.get('ALPINO_SERVER', 'http://localhost:5002')
+            r = requests.get(alpino_server)
+            if r.status_code != 200:
+                raise Exception("No server found at {alpino_server} and ALPINO_HOME not set".format(**locals()))
 
     def process(self, text):
-        tokens = tokenize(text)
-        return parse_raw(tokens)
+        if 'ALPINO_HOME' in os.environ:
+            tokens = tokenize(text)
+            return parse_raw(tokens)
+        else:
+            alpino_server = os.environ.get('ALPINO_SERVER', 'http://localhost:5002')
+            url = "{alpino_server}/parse".format(**locals())
+            body = {"text": text, "output": "dependencies"}
+            r = requests.post(url, json=body)
+            if r.status_code != 200:
+                raise Exception("Error calling Alpino at {alpino_server}: {r.status_code}:\n{r.content!r}"
+                                .format(**locals()))
+            return r.text
 
     def convert(self, id, result, format):
-
         assert format in ["csv"]
         s = StringIO()
         w = csv.writer(s)
@@ -73,12 +93,21 @@ def parse_raw(tokens):
     return _call_alpino(CMD_PARSE, tokens)
 
 
+def get_fields(parse):
+    if parse.strip().startswith("{"):
+        parse = json.loads(parse)
+        for sid in parse:
+            for row in parse[sid]['triples']:
+                yield row + [sid]
+    else:
+        for line in parse.split("\n"):
+            if line.strip():
+                yield line.strip().split("|")
+
+
 def interpret_parse(parse):
     rels = {}  # child: (rel, parent)
-    for line in parse.split("\n"):
-        if not line.strip():
-            continue
-        line = line.strip().split("|")
+    for line in get_fields(parse):
         assert len(line) == 16
         sid = int(line[-1])
         func, rel = line[7].split("/")
