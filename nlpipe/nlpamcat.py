@@ -37,14 +37,15 @@ if __name__ == '__main__':
 
     if args.action == "process":
         todo = [id for (id, status) in status.items() if status == "UNKNOWN"]
-        logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
-                     .format(len(todo), **locals()))
+        if todo:
+            logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
+                         .format(len(todo), **locals()))
 
-        for arts in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100, yield_pages=True):
-            ids = [a['id'] for a in arts]
-            texts = ["{headline}\n\n{text}".format(**a) for a in arts]
-            logging.debug("Assigning {} articles".format(len(ids)))
-            c.bulk_process(args.module, texts, ids=ids)
+            for arts in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100, yield_pages=True):
+                ids = [a['id'] for a in arts]
+                texts = ["{headline}\n\n{text}".format(**a) for a in arts]
+                logging.debug("Assigning {} articles".format(len(ids)))
+                c.bulk_process(args.module, texts, ids=ids)
 
         logging.info("Done! Assigned {} articles".format(len(todo)))
     if args.action == "status":

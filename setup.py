@@ -22,7 +22,7 @@ setup(
         "requests",
         "pynlpl",
         "corenlp_xml>=1.0.4",
-        "amcatclient",
+        "amcatclient>=3.4.5",
         "flask-autodoc"
     ]
 )
