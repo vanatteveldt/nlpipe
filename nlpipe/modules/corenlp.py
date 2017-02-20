@@ -17,9 +17,8 @@ import logging
 
 from corenlp_xml.document import Document
 
-class CoreNLPLemmatizer(Module):
-    name = "corenlp_lemmatize"
-    properties = {"annotators": "tokenize,ssplit,pos,lemma,ner", "outputFormat": "xml"}
+class CoreNLPBase(Module):
+
 
     def __init__(self, server=None):
         if server is None:
@@ -30,7 +29,7 @@ class CoreNLPLemmatizer(Module):
         res = requests.get(self.server)
         if "http://nlp.stanford.edu/software/corenlp.shtml" not in res.text:
             raise Exception("Unexpected answer at {self.server}".format(**locals()))
-        
+
     def process(self, text):
         query = urlencode({"properties": json.dumps(self.properties)})
         url = "{self.server}/?{query}".format(**locals())
@@ -38,6 +37,10 @@ class CoreNLPLemmatizer(Module):
         if res.status_code != 200:
             raise Exception("Error calling corenlp at {url}: {res.status_code}\n{res.content}".format(**locals()))
         return res.content.decode("utf-8")
+
+class CoreNLPParser(CoreNLPBase):
+    name = "corenlp_parse"
+    properties = {"annotators": "tokenize,ssplit,pos,lemma,ner,parse,dcoref", "outputFormat": "xml"}
 
     def convert(self, id, result, format):
         assert format in ["csv"]
@@ -49,7 +52,39 @@ class CoreNLPLemmatizer(Module):
 
         s = StringIO()
         w = csv.writer(s)
-        w.writerow(["id", "sentence", "offset", "word", "lemma", "POS", "POS1", "ner"])
+        w.writerow(["doc", "sentence", "id", "offset", "word", "lemma", "POS", "pos1", "ner", "relation", "parent"])
+
+        parents = {}  # sentence, child.id : (rel, parent.id)
+        for sent in doc.sentences:
+            if sent.collapsed_ccprocessed_dependencies:
+                for dep in sent.collapsed_ccprocessed_dependencies.links:
+                    if dep.type != 'root':
+                        parents[sent.id, dep.dependent.idx] = (dep.type, dep.governor.idx)
+
+        for sent in doc.sentences:
+            for t in sent.tokens:
+                rel, parent = parents.get((sent.id, t.id), (None, None))
+                w.writerow([id, sent.id, t.id, t.character_offset_begin, t.word, t.lemma,
+                            t.pos, POSMAP[t.pos], t.ner, rel, parent])
+
+        return s.getvalue()
+
+
+class CoreNLPLemmatizer(CoreNLPBase):
+    name = "corenlp_lemmatize"
+    properties = {"annotators": "tokenize,ssplit,pos,lemma,ner", "outputFormat": "xml"}
+
+    def convert(self, id, result, format):
+        assert format in ["csv"]
+        try:
+            doc = Document(result.encode("utf-8"))
+        except:
+            logging.exception("Error on parsing xml")
+            raise
+
+        s = StringIO()
+        w = csv.writer(s)
+        w.writerow(["id", "sentence", "offset", "word", "lemma", "POS", "pos1", "ner"])
         
         for sent in doc.sentences:
             for t in sent.tokens:
@@ -58,6 +93,7 @@ class CoreNLPLemmatizer(Module):
         return s.getvalue()
     
 CoreNLPLemmatizer.register()
+CoreNLPParser.register()
 
 
 POSMAP = { # Penn treebank POS -> simple POS
