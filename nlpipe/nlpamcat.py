@@ -1,10 +1,23 @@
 import argparse
 import json
 from collections import Counter
+import re
 
 from amcatclient import amcatclient
 from nlpipe.client import get_client
 import logging
+
+def normalize(txt):
+    pars = []
+    for par in txt.split("\n\n"):
+        par = par.replace("\n", " ")
+        par = re.sub("\s+", " ", par)
+        par = par.strip()
+        pars.append(par)
+    return "\n\n".join(pars)
+
+def get_text(a):
+    return "\n\n".join([normalize(a[x]) for x in ('headline', 'text')])
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -43,7 +56,7 @@ if __name__ == '__main__':
 
             for arts in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100, yield_pages=True):
                 ids = [a['id'] for a in arts]
-                texts = ["{headline}\n\n{text}".format(**a) for a in arts]
+                texts = [get_text(a) for a in arts]
                 logging.debug("Assigning {} articles".format(len(ids)))
                 c.bulk_process(args.module, texts, ids=ids)
 
