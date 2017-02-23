@@ -1,2 +1,2 @@
-from . import corenlp, test_upper, frog, alpino
+from . import corenlp, test_upper, frog, alpino, newsreader
 
