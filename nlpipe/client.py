@@ -7,6 +7,8 @@ import logging
 import subprocess
 
 import itertools
+from urllib.parse import urlencode
+
 import requests
 
 from nlpipe.module import Module, get_module, known_modules
@@ -37,11 +39,13 @@ def get_id(doc):
 class Client(object):
     """Abstract class for NLPipe client bindings"""
 
-    def process(self, module, doc, id=None):
+    def process(self, module, doc, id=None, reset_error=False, reset_pending=False):
         """Add a document to be processed by module, returning the task ID
         :param module: Module name
         :param doc: A document (string)
         :param id: An optional id for the task
+        :param reset_error: Re-assign documents that have status 'ERROR'
+        :param reset_pending: Re-assign documents that have status 'PENDING'
         :return: task ID
         :rtype: str
         """
@@ -137,17 +141,18 @@ class Client(object):
         """
         return {id: self.result(module, id, format=format) for id in ids}
 
-    def bulk_process(self, module, docs, ids=None):
+    def bulk_process(self, module, docs, ids=None, **kargs):
         """
         Add multiple documents to the processing queue
         :param module:  Module name
         :param docs: Documents to process
         :param ids: Optional sequence of explicit IDs corresponding to the documents
+        :param kargs: Additional options to pass to process
         :return: a sequence of IDs
         """
         if ids is None:
             ids = itertools.repeat(None)
-        return [self.process(module, doc, id=id) for (doc, id) in zip(docs, ids)]
+        return [self.process(module, doc, id=id, **kargs) for (doc, id) in zip(docs, ids)]
 
 
 class FSClient(Client):
@@ -205,11 +210,16 @@ class FSClient(Client):
                 return status
         return 'UNKNOWN'
 
-    def process(self, module, doc, id=None):
+    def process(self, module, doc, id=None, reset_error=False, reset_pending=False):
         if id is None:
             id = get_id(doc)
-        if self.status(module, id) == 'UNKNOWN':
+        status = self.status(module, id)
+        if status == 'UNKNOWN':
             logging.debug("Assigning doc {id} to {module}".format(**locals()))
+            self._write(module, 'PENDING', id, doc)
+        elif (status == "ERROR" and reset_error) or (status == "PENDING and reset_pending"):
+            logging.debug("Re-assigning doc {id} with status {status} to {module}".format(**locals()))
+            self._delete(module, status, id)
             self._write(module, 'PENDING', id, doc)
         else:
             logging.debug("Document {id} had status {}".format(self.status(module, id), **locals()))
@@ -350,8 +360,9 @@ class HTTPClient(Client):
                             .format(**locals()))
         return res.json()
 
-    def bulk_process(self, module, docs, ids=None):
-        url = "{self.server}/api/modules/{module}/bulk/process".format(**locals())
+    def bulk_process(self, module, docs, ids=None, reset_error=False, reset_pending=False):
+        url = ("{self.server}/api/modules/{module}/bulk/process?reset_error={reset_error}&reset_pending={reset_pending}"\
+               .format(**locals()))
         body = list(docs) if ids is None else dict(zip(ids, docs))
         res = requests.post(url, json=body)
         if res.status_code != 200:

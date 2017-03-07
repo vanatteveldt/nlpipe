@@ -29,6 +29,8 @@ if __name__ == '__main__':
     parser.add_argument("action", help="NLPipe action", choices=["process", "status", "result"])
     parser.add_argument("--format", "-f", help="Result format")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
+    parser.add_argument("--reset-error", "-e", help="Reset errored documents (for action=process)", action="store_true")
+    parser.add_argument("--reset-pending", "-p", help="Reset pending documents (for action=process)", action="store_true")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -50,6 +52,11 @@ if __name__ == '__main__':
 
     if args.action == "process":
         todo = [id for (id, status) in status.items() if status == "UNKNOWN"]
+        if args.reset_error:
+            todo += [id for (id, status) in status.items() if status == "ERROR"]
+        if args.reset_pending:
+            todo += [id for (id, status) in status.items() if status == "PENDING"]
+
         if todo:
             logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
                          .format(len(todo), **locals()))
@@ -58,7 +65,8 @@ if __name__ == '__main__':
                 ids = [a['id'] for a in arts]
                 texts = [get_text(a) for a in arts]
                 logging.debug("Assigning {} articles".format(len(ids)))
-                c.bulk_process(args.module, texts, ids=ids)
+                c.bulk_process(args.module, texts, ids=ids, reset_error=args.reset_error,
+                               reset_pending=args.reset_pending)
 
         logging.info("Done! Assigned {} articles".format(len(todo)))
     if args.action == "status":

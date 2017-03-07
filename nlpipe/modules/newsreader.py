@@ -40,7 +40,7 @@ class Newsreader(Module):
         body = {"text": text}
         r = requests.post(url, json=body)
         if r.status_code != 200:
-            raise Exception("Error calling Newsreader at {alpino_server}: {r.status_code}:\n{r.content!r}"
+            raise Exception("Error calling Newsreader at {newsreader_server}: {r.status_code}:\n{r.content!r}"
                             .format(**locals()))
         return r.text
 

@@ -185,6 +185,8 @@ def bulk_process(module):
 
     :param module: The module name
     """
+    reset_error = request.args.get('reset_error', False) in ('1', 'Y', 'True')
+    reset_pending = request.args.get('reset_pending', False) in ('1', 'Y', 'True')
     try:
         docs = request.get_json(force=True)
         if not docs:
@@ -196,7 +198,7 @@ def bulk_process(module):
         docs, ids = docs, None
     else:
         docs, ids = docs.values(), docs.keys()
-    ids = app.client.bulk_process(module, docs, ids=ids)
+    ids = app.client.bulk_process(module, docs, ids=ids, reset_error=reset_error, reset_pending=reset_pending)
     return jsonify(ids)
 
 
