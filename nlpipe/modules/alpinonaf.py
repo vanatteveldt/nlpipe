@@ -38,7 +38,7 @@ class AlpinoNERCParser(Module):
     def process(self, text):
         alpino_server = os.environ.get('ALPINO_SERVER', 'http://localhost:5002')
         url = "{alpino_server}/parse/nerc".format(**locals())
-        r = requests.post(url, text)
+        r = requests.post(url, text.encode("utf-8"))
         r.raise_for_status()
         return r.content.decode("utf-8")
 
