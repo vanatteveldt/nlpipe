@@ -12,6 +12,7 @@ possibly related to https://github.com/docker/docker/issues/13914
 See: http://languagemachines.github.io/frog/
 """
 import csv
+import logging
 import os
 from io import StringIO
 import socket
@@ -35,10 +36,14 @@ class FrogLemmatizer(Module):
         """
         Call frog on the text and return (sent, offset, word, lemma, pos, morphofeat) tuples
         """
+        logging.debug("Creating frog client")
         frogclient = FrogClient(self.host, self.port, returnall=True, timeout=600)
         sent = 1
         offset = 0
-        for word, lemma, morph, morphofeat, ner, chunk, _p1, _p2 in frogclient.process(text):
+        logging.debug("Calling frog")
+        tokens = list(frogclient.process(text))
+        logging.debug("Got {} tokens".format(len(tokens)))
+        for word, lemma, morph, morphofeat, ner, chunk, _p1, _p2 in tokens:
             if word is None:
                 sent += 1
             else:

@@ -2,10 +2,13 @@ import argparse
 import json
 from collections import Counter
 import re
+from io import BytesIO
 
 from amcatclient import amcatclient
 from nlpipe.client import get_client
 import logging
+from KafNafParserPy import KafNafParser, CfileDesc, Cpublic, CHeader
+
 
 def normalize(txt):
     pars = []
@@ -16,8 +19,46 @@ def normalize(txt):
         pars.append(par)
     return "\n\n".join(pars)
 
-def get_text(a):
-    return "\n\n".join([normalize(a[x]) for x in ('headline', 'text')])
+def get_text(a, to_naf=False, lang='nl'):
+    result = "\n\n".join([normalize(a[x]) for x in ('headline', 'text')])
+    if to_naf:
+        naf = KafNafParser(type="NAF")
+        naf.header = CHeader(type=naf.type)
+        naf.root.insert(0, naf.header.get_node())
+
+        naf.set_language(lang)
+        naf.set_raw(result)
+        naf.set_version("3.0")
+        
+        fd = CfileDesc()
+        if 'author' in a:
+            fd.set_author(a['author'])
+        if 'headline' in a:
+            fd.set_title(a['headline'])
+        if 'date' in a:
+            fd.set_creationtime(a['date'])
+        if 'medium' in a:
+            fd.set_magazine(a['medium'])
+        if 'page' in a:
+            fd.set_pages(str(a['page']))
+        if 'section' in a:
+            fd.set_section(a['section'])
+        naf.header.set_fileDesc(fd)
+
+        pub = Cpublic()
+        if 'url' in a:
+            pub.set_uri(a['url'])
+        if 'uuid' in a:
+            pub.set_publicid(a['uuid'])
+        naf.header.set_publicId(pub)
+        b = BytesIO()
+        naf.dump(b)
+        result = b.getvalue().decode("utf-8")
+    return result
+
+
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -27,6 +68,7 @@ if __name__ == '__main__':
     parser.add_argument("nlpipeserver", help="NLPipe Server hostname or directory location")
     parser.add_argument("module", help="Module name")
     parser.add_argument("action", help="NLPipe action", choices=["process", "status", "result"])
+    parser.add_argument("--naf", help="Use NAF input format (for action=process)", action="store_true")
     parser.add_argument("--format", "-f", help="Result format")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
     parser.add_argument("--reset-error", "-e", help="Reset errored documents (for action=process)", action="store_true")
@@ -60,10 +102,11 @@ if __name__ == '__main__':
         if todo:
             logging.info("Assigning {} articles from {args.amcatserver} set {args.project}:{args.articleset}"
                          .format(len(todo), **locals()))
-
-            for arts in a.get_articles_by_id(articles=todo, columns='headline,text', page_size=100, yield_pages=True):
+            columns = 'headline,text,creator,date,url,uuid,medium,section,page' if args.naf else 'headline,text'
+            for arts in a.get_articles_by_id(articles=todo, columns=columns, page_size=100, yield_pages=True):
                 ids = [a['id'] for a in arts]
-                texts = [get_text(a) for a in arts]
+                texts = [get_text(a, to_naf=args.naf) for a in arts]
+
                 logging.debug("Assigning {} articles".format(len(ids)))
                 c.bulk_process(args.module, texts, ids=ids, reset_error=args.reset_error,
                                reset_pending=args.reset_pending)
