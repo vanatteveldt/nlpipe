@@ -23,6 +23,7 @@ setup(
         "pynlpl",
         "corenlp_xml>=1.0.4",
         "amcatclient>=3.4.5",
-        "flask-autodoc"
+        "flask-autodoc",
+        "KafNafParserPy",
     ]
 )
