@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name="nlpipe",
-    version="0.44",
+    version="0.45",
     description="Simple NLP Pipelinining based on a file system",
     author="Wouter van Atteveldt",
     author_email="wouter@vanatteveldt.com",
