@@ -217,7 +217,7 @@ class FSClient(Client):
         if status == 'UNKNOWN':
             logging.debug("Assigning doc {id} to {module}".format(**locals()))
             self._write(module, 'PENDING', id, doc)
-        elif (status == "ERROR" and reset_error) or (status == "PENDING and reset_pending"):
+        elif (status == "ERROR" and reset_error) or (status == "STARTED" and reset_pending):
             logging.debug("Re-assigning doc {id} with status {status} to {module}".format(**locals()))
             self._delete(module, status, id)
             self._write(module, 'PENDING', id, doc)
