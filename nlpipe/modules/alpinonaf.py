@@ -10,18 +10,15 @@ If running alpino locally, note that the module needs the dependencies end_hook,
 some builds. See: http://www.let.rug.nl/vannoord/alp/Alpino
 """
 import csv
-import datetime
-import json
 import logging
 import os
-import subprocess
-import requests
-
-import itertools
-import tempfile
 from io import StringIO, BytesIO
 
+import requests
+from KafNafParserPy import KafNafParser
+
 from nlpipe.module import Module
+from .alpino import POSMAP
 
 log = logging.getLogger(__name__)
 
@@ -42,5 +39,34 @@ class AlpinoNERCParser(Module):
         r.raise_for_status()
         return r.content.decode("utf-8")
 
+    def convert(self, id, result, format):
+        assert format == "csv"
+
+        _int = lambda x: None if x is None else int(x)
+        naf = KafNafParser(BytesIO(result.encode("utf-8")))
+
+        deps = {dep.get_to(): (dep.get_function(), dep.get_from())
+                for dep in naf.get_dependencies()}
+        tokendict = {token.get_id(): token for token in naf.get_tokens()}
+
+        s = StringIO()
+        w = csv.writer(s)
+        w.writerow(["id", "token_id", "offset", "sentence", "para", "word", "term_id",
+                    "lemma", "pos", "pos1", "parent", "relation"])
+        for term in naf.get_terms():
+            tokens = [tokendict[id] for id in term.get_span().get_span_ids()]
+            for token in tokens:
+                tid = term.get_id()
+                pos = term.get_pos()
+                pos1 = POSMAP[pos]
+                row = [id,  token.get_id(), _int(token.get_offset()), _int(token.get_para()), token.get_text(),
+                       tid, term.get_lemma(), pos, pos1]
+                if tid in deps:
+                    rel, parent = deps[tid]
+                    row += [parent, rel.split("/")[-1]]
+                else:
+                    row += [None, None]
+                w.writerow(row)
+        return s.getvalue()
 
 AlpinoNERCParser.register()
