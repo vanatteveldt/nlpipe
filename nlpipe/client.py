@@ -230,7 +230,11 @@ class FSClient(Client):
         if status == 'DONE':
             result = self._read(module, 'DONE', id)
             if format is not None:
-                result = get_module(module).convert(id, result, format)
+                try:
+                    result = get_module(module).convert(id, result, format)
+                except:
+                    logging.exception("Error converting document {id} to {format}".format(**locals()))
+                    raise
             return result
         if status == 'ERROR':
             raise Exception(self._read(module, 'ERROR', id))
