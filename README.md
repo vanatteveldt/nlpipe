@@ -13,13 +13,18 @@ Components:
 - Client bindings
 - Workers
 
-Installation
+Install and test
 ===
 
-Docker
+Rest-server
 ---
 
-To use nlpipe you can use the docker image: (you might need to run this as superuser)
+You can install a rest-server on your system using PIP or you can use
+a ready-to-run docker image. 
+
+### As a Docker container
+
+Do (possibly as superuser):
 
 ```{sh}
 docker run --name nlpipe -dp 5001:5001 vanatteveldt/nlpipe
@@ -27,65 +32,78 @@ docker run --name nlpipe -dp 5001:5001 vanatteveldt/nlpipe
 
 This will pull the nlpipe docker image and run the nlpipe restserver on port 5001 and by default run all known worker modules. Note: The `-d` means that the docker process will be 'detached', i.e. run in the background. 
 
-For more options, run:
-
-```{sh}
-docker run vanatteveldt/nlpipe --help
-```
-
 To see (or *f*ollow) the logs of a running worker, use:
 
 ```{sh}
 docker logs [-f] nlpipe
 ```
 
-Local install via pip
----
+### Directly in your computer
 
+NLPipe runs on Python version 3.something.
 To install nlpipe locally, it is best to create a virtual environment and install nlpipe in it:
-
 
 ```{sh}
 pyvenv env
 env/bin/pip install -e git+git://github.com/vanatteveldt/nlpipe.git#egg=nlpipe
 ```
 
-Now you can run nlpipe from the created environment, e.g. to run the webserver do:
+Now you can run nlpipe from the created environment. e.g. to run a
+webserver that listens  http://localhost:5001 in test-mode, open a separate
+terminal, "source" the Python virtual environment and do e.g.:
 
 ```{sh}
 env/bin/python -m nlpipe.restserver
 ```
 
-Using nlpipe
----
+The program prints
 
-Command line usage
-===
+`Running on http://localhost:5001/ (Press CTRL+C to quit)`. 
 
-To use nlpipe, you can use use the file system or HTTP client. 
-They can be used on the command line through docker or from the local install.
-For example, to start a worker for the `test_upper` module against a local HTTP server run:
+The server runs until you quit this process with CTRL+C. In the mean time it prints
+logging information in your xterm window.
+
+The purpose of the server is only to move files around. In order to
+process files you need to set up a separate worker. The worker polls
+the server for new-uploaded texts, performs a task on them and returns
+the processed texts to the server. NLPipe supplies a
+demo processor-module `test_upper`. To set up a worker for this module, open a
+separate xterm, source the Python virtual environment in it and do e.g.:
 
 ```{sh}
 $ env/bin/python -m nlpipe.worker http://localhost:5001 test_upper
 ```
 
-To run commands using docker, use `docker run python` (as a ew container) or `docker exec <container> python` (in an existing container) instead of `env/bin/python`: 
+The program responds with
+`... Workers active and waiting for input`
+and keeps running. You can see that it polls the server, because the
+server prints loads of messages like:
+
+`[2017-05-03 12:59:00,844 werkzeug     INFO ] 127.0.0.1 - -
+[03/May/2017 12:59:00] "GET /api/modules/test_upper/ HTTP/1.1" 404 -`
+
+Note: This is not needed for the Docker server, because workers have
+been pre-installed there.
+
+### Test whether it works
+
+NLPipe provides a client to communicate with the server. To use it, do e.g.
 
 ```{sh}
-$ docker exec python -m nlpipe.worker http://localhost:5001 test_upper
-```
-
-To process documents you can use the following command line calls:
-
-```{sh}
-$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper process "this is a test"
+$ env/bin/python -m nlpipe.client http://localhost:5001 test_upper process "this is a test"
 0x54b0c58c7ce9f2a8b551351102ee0938
-$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper status 0x54b0c58c7ce9f2a8b551351102ee0938
+$ env/bin/python -m nlpipe.client http://localhost:5001 test_upper status 0x54b0c58c7ce9f2a8b551351102ee0938
 DONE
-$ env/bin/python -m nlpipe.client /tmp/nlpipe test_upper result 0x54b0c58c7ce9f2a8b551351102ee0938
+$ env/bin/python -m nlpipe.client http://localhost:5001 test_upper result 0x54b0c58c7ce9f2a8b551351102ee0938
 THIS IS A TEST
 ```
+
+Explanation: The first line submits the string "this is a test" as a
+task for the `test_upper` processor. The command returns an
+identifier. The second line requests the status of the task. The
+status might be "PENDING", "STARTED",  "DONE",  "ERROR". When the task
+has been done, the third command retrieves the processed task. 
+
 
 Example Setups
 ===
