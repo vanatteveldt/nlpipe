@@ -33,7 +33,7 @@ class CoreNLPBase(Module):
     def process(self, text):
         query = urlencode({"properties": json.dumps(self.properties)})
         url = "{self.server}/?{query}".format(**locals())
-        res = requests.post(url, data=text)
+        res = requests.post(url, data=text.encode("utf-8"))
         if res.status_code != 200:
             raise Exception("Error calling corenlp at {url}: {res.status_code}\n{res.content}".format(**locals()))
         return res.content.decode("utf-8")
