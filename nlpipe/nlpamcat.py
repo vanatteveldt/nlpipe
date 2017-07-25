@@ -4,11 +4,27 @@ from collections import Counter
 import re
 from io import BytesIO
 from typing import Union, Iterable, Mapping
+import itertools
 
 from amcatclient import AmcatAPI
 from nlpipe.client import get_client, Client
 import logging
 from KafNafParserPy import KafNafParser, CfileDesc, Cpublic, CHeader
+
+
+
+def grouper(iterable, n, fillvalue=None):
+    """Collect data into fixed-length chunks or blocks."""
+    if n < 1:
+        raise ValueError("Size of {} invalid for grouper() / splitlist().".format(n))
+    return itertools.zip_longest(fillvalue=fillvalue, *([iter(iterable)] * n))
+
+
+def splitlist(iterable, itemsperbatch=100):
+    """Split a list into smaller lists. Uses no fillvalue, as opposed to grouper()."""
+    _fillvalue = object()
+    for group in grouper(iterable, itemsperbatch, _fillvalue):
+        yield [e for e in group if e is not _fillvalue]
 
 
 def _amcat(amcat_server: Union[str, AmcatAPI]) -> AmcatAPI:
@@ -47,6 +63,40 @@ def get_status(amcat_server: Union[str, AmcatAPI], project: int, articleset: int
     ids = list(get_ids(amcat_server, project, articleset))
     return {int(id): status
             for (id, status) in _nlpipe(nlpipe_server).bulk_status(module, ids).items()}
+
+
+def process_pipe(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
+                 nlpipe_server: Union[str, Client], module: str, previous_module: str) -> None:
+    
+    status = get_status(amcat_server, project, articleset, nlpipe_server, module)
+
+    todo = {id for (id, status) in status.items() if status in "UNKNOWN"}
+
+    if not todo:
+        logging.info("All {} documents to process with {module} are done".format(len(status), **locals()))
+        return
+
+    logging.info("{} out of {} documents to process with {module}, checking {previous_module} status"
+                 .format(len(todo), len(status),  **locals()))
+                 
+    previous_status = get_status(amcat_server, project, articleset, nlpipe_server, previous_module)
+    cando = {id for (id, status) in previous_status.items() if status in "DONE"}
+
+    if todo - cando:
+        logging.warning("{} out of {} documents cannot be processed as {previous_module} is not done"
+                        .format(len(todo-cando), len(todo), **locals()))
+
+    todo = todo & cando
+    if todo:
+        logging.info("Assigning {} articles from {amcat_server} set {project}:{articleset}"
+                     .format(len(todo), **locals()))
+        for ids in splitlist(todo, itemsperbatch=100):
+            logging.debug("Assigning {} articles...".format(len(ids)))
+            input_files = _nlpipe(nlpipe_server).bulk_result(previous_module, ids)
+            input_files = [input_files[str(id)] for id in ids]
+            _nlpipe(nlpipe_server).bulk_process(module, input_files, ids=ids)
+    
+                     
 
 
 def process(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
@@ -149,7 +199,7 @@ if __name__ == '__main__':
     parser.add_argument("articleset", help="AmCAT Article Set ID", type=int)
     parser.add_argument("nlpipeserver", help="NLPipe Server hostname or directory location")
     parser.add_argument("module", help="Module name")
-    parser.add_argument("action", help="NLPipe action", choices=["process", "status", "result"])
+    parser.add_argument("action", help="NLPipe action", choices=["process", "process_pipe", "status", "result"])
     parser.add_argument("--naf", help="Use NAF input format (action=process)", action="store_true")
     parser.add_argument("--format", "-f", help="Result format (action=result)")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
@@ -168,6 +218,8 @@ if __name__ == '__main__':
     if args.action == "process":
         process(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module,
                 args.reset_error, args.reset_started)
+    if args.action == "process_pipe":
+        process_pipe(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module, "alpinonerc")
     if args.action == "status":
         status = get_status(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module)
         for k, v in Counter(status.values()).items():
