@@ -1,17 +1,52 @@
+import datetime
 import json
 import os
+import socket
 import sys
+from functools import wraps
+import logging
+
+import jwt
 from flask import Flask, request, make_response, Response, abort, jsonify
 from flask.templating import render_template
+from flask_autodoc.autodoc import Autodoc
 
 from nlpipe.client import FSClient
 from nlpipe.module import UnknownModuleError, get_module, known_modules
 from nlpipe.worker import run_workers
-import logging
 
+class LoginFailed(Exception):
+    pass
+
+def do_check_auth():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header:
+        raise LoginFailed("No authentication supplied\n")
+    if not auth_header.startswith("Token "):
+        raise LoginFailed("Incorrectly formatted authorization header\n")
+    token = auth_header[len("Token "):]
+    try:
+        jwt.decode(token, _secret_key())
+    except jwt.DecodeError as e:
+        raise LoginFailed("Invalid token") from e
+
+
+# whill throw exception if not valid
+
+def check_auth(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if app.use_auth:
+            try:
+                do_check_auth()
+            except LoginFailed as e:
+                return "Login Failed: {e}\n".format(**locals()), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 app = Flask('NLPipe', template_folder=os.path.dirname(__file__))
-from flask.ext.autodoc import Autodoc
+
+
 auto = Autodoc(app)
 
 STATUS_CODES = {
@@ -23,12 +58,40 @@ STATUS_CODES = {
 }
 ERROR_MIME = 'application/prs.error+text'
 
+SECRET_KEY = None
+
+
+def _secret_key():
+    global SECRET_KEY
+    if SECRET_KEY is None:
+        hostid = os.popen("hostid").read().strip()
+        hostname = socket.gethostname()
+        SECRET_KEY = "__{hostid}_{hostname}"
+    return SECRET_KEY
+
+
+def get_token():
+    payload = {
+        'version': 1,
+        'iat': datetime.datetime.utcnow(),
+
+    }
+    return jwt.encode(payload, _secret_key(), algorithm='HS256')
+
+
+@app.route('/checktoken', methods=['HEAD', 'GET'])
+@check_auth
+def checktoken(token):
+    return "Authentication {}\n".format("OK" if app.use_auth else "disabled"), 200
+
+
 @app.route('/')
 def index():
     fsdir = app.client.result_dir
-    mods = sorted(known_modules(), key=lambda mod:mod.name)
+    mods = sorted(known_modules(), key=lambda mod: mod.name)
     mods = {mod: dict(app.client.statistics(mod.name)) for mod in mods}
     return render_template('index.html', **locals())
+
 
 @app.route('/apidoc')
 def doc():
@@ -36,6 +99,7 @@ def doc():
 
 
 @app.route('/api/modules/<module>/', methods=['POST'])
+@check_auth
 @auto.doc()
 def post_task(module):
     """
@@ -60,6 +124,7 @@ def post_task(module):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['HEAD'])
+@check_auth
 @auto.doc()
 def task_status(module, id):
     """
@@ -76,6 +141,7 @@ def task_status(module, id):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['GET'])
+@check_auth
 @auto.doc()
 def result(module, id):
     """
@@ -99,6 +165,7 @@ def result(module, id):
 
 
 @app.route('/api/modules/<module>/', methods=['GET'])
+@check_auth
 @auto.doc()
 def get_task(module):
     """
@@ -118,6 +185,7 @@ def get_task(module):
 
 
 @app.route('/api/modules/<module>/<id>', methods=['PUT'])
+@check_auth
 @auto.doc()
 def put_results(module, id):
     """
@@ -138,6 +206,7 @@ def put_results(module, id):
 
 
 @app.route('/api/modules/<module>/bulk/status', methods=['POST'])
+@check_auth
 @auto.doc()
 def bulk_status(module):
     """
@@ -157,6 +226,7 @@ def bulk_status(module):
 
 
 @app.route('/api/modules/<module>/bulk/result', methods=['POST'])
+@check_auth
 @auto.doc()
 def bulk_result(module):
     """
@@ -177,6 +247,7 @@ def bulk_result(module):
 
 
 @app.route('/api/modules/<module>/bulk/process', methods=['POST'])
+@check_auth
 @auto.doc()
 def bulk_process(module):
     """
@@ -202,14 +273,10 @@ def bulk_process(module):
     return jsonify(ids)
 
 
-
-
-
-
 if __name__ == '__main__':
     import argparse
     import tempfile
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("directory", nargs="?",
                         help="Location of NLPipe storage directory (default: $NLPIPE_DIR or tempdir)")
@@ -219,11 +286,18 @@ if __name__ == '__main__':
     parser.add_argument("--host", "-H", help="Host address to listen on (default: $NLPIPE_HOST or localhost)")
     parser.add_argument("--debug", "-d", help="Set debug mode (implies -v)", action="store_true")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
+    parser.add_argument("--disable-authentication", "-A", help="Disable authentication. Only use on firewalled servers",
+                        action="store_true")
+    parser.add_argument("--print-token", "-T", help="Print authentication token and exit", action="store_true")
     args = parser.parse_args()
-    
+
+    if args.print_token:
+        print("Authentication token:\n{}".format(get_token().decode("ascii")))
+        sys.exit()
+
     logging.basicConfig(level=logging.DEBUG if (args.debug or args.verbose) else logging.INFO,
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
-                        
+
     host = args.host or os.environ.get("NLPIPE_HOST", "localhost")
     port = args.port or os.environ.get("NLPIPE_PORT", 5001)
 
@@ -241,4 +315,8 @@ if __name__ == '__main__':
         run_workers(app.client, module_names)
 
     logging.debug("Serving from {args.directory}".format(**locals()))
+    app.use_auth = not args.disable_authentication
+    if not app.use_auth:
+        logging.warning("** Authentication disabled! **")
+
     app.run(port=port, host=host, debug=args.debug)

@@ -284,12 +284,31 @@ class HTTPClient(Client):
     NLPipe client that connects to the REST server
     """
 
-    def __init__(self, server="http://localhost:5000"):
+    def __init__(self, server="http://localhost:5000", token=None):
         self.server = server
+        self.token = token
+
+    def request(self, method, url, headers=None, **kwargs):
+        if headers is None:
+            headers = {}
+        if self.token:
+            headers['Authorization'] = "Token {}".format(self.token)
+        return requests.request(method, url, headers=headers, **kwargs)
+
+    def head(self, url, **kwargs):
+        return self.request('head', url, **kwargs)
+
+    def post(self, url, **kwargs):
+        return self.request('post', url, **kwargs)
+
+    def get(self, url, **kwargs):
+        return self.request('get', url, **kwargs)
 
     def status(self, module: str, id: str) -> str:
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
-        res = requests.head(url)
+        res = self.head(url)
+        if res.status_code == 403:
+            raise Exception("403 Forbidden, please provide a token")
         if 'Status' in res.headers:
             return res.headers['Status']
         raise Exception("Cannot determine status for {module}/{id}; return code: {res.status_code}"
@@ -299,7 +318,7 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/".format(**locals())
         if id is not None:
             url = "{url}?id={id}".format(**locals())
-        res = requests.post(url, data=doc.encode("utf-8"))
+        res = self.post(url, data=doc.encode("utf-8"))
         if res.status_code != 202:
             raise Exception("Error on processing doc with {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
@@ -309,7 +328,7 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         if format is not None:
             url = "{url}?format={format}".format(**locals())
-        res = requests.get(url)
+        res = self.get(url)
         if res.status_code != 200:
             raise Exception("Error on getting result for {module}/{id}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
@@ -317,7 +336,7 @@ class HTTPClient(Client):
 
     def get_task(self, module):
         url = "{self.server}/api/modules/{module}/".format(**locals())
-        res = requests.get(url)
+        res = self.get(url)
 
         if res.status_code == 404:
             return None, None
@@ -329,7 +348,7 @@ class HTTPClient(Client):
     def store_result(self, module, id, result):
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         data = result.encode("utf-8")
-        res = requests.put(url, data=data)
+        res = self.put(url, data=data)
 
         if res.status_code != 204:
             raise Exception("Error on storing result for {module}:{id}; return code: {res.status_code}:\n{res.text}"
@@ -341,14 +360,14 @@ class HTTPClient(Client):
         data = result.encode("utf-8")
         from nlpipe.restserver import ERROR_MIME
         headers = {'Content-type': ERROR_MIME}
-        res = requests.put(url, data=data, headers=headers)
+        res = self.put(url, data=data, headers=headers)
         if res.status_code != 204:
             raise Exception("Error on storing error for {module}:{id}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
 
     def bulk_status(self, module, ids):
         url = "{self.server}/api/modules/{module}/bulk/status".format(**locals())
-        res = requests.post(url, json=ids)
+        res = self.post(url, json=ids)
         if res.status_code != 200:
             raise Exception("Error on getting bulk status for {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
@@ -358,7 +377,7 @@ class HTTPClient(Client):
         url = "{self.server}/api/modules/{module}/bulk/result".format(**locals())
         if format is not None:
             url = "{url}?format={format}".format(**locals())
-        res = requests.post(url, json=ids)
+        res = self.post(url, json=ids)
         if res.status_code != 200:
             raise Exception("Error on getting bulk results for {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
@@ -368,17 +387,17 @@ class HTTPClient(Client):
         url = ("{self.server}/api/modules/{module}/bulk/process?reset_error={reset_error}&reset_pending={reset_pending}"\
                .format(**locals()))
         body = list(docs) if ids is None else dict(zip(ids, docs))
-        res = requests.post(url, json=body)
+        res = self.post(url, json=body)
         if res.status_code != 200:
             raise Exception("Error on bulk processfor {module}; return code: {res.status_code}:\n{res.text}"
                             .format(**locals()))
         return res.json()
 
-def get_client(servername):
+def get_client(servername, token=None):
     if servername.startswith("http:") or servername.startswith("https:"):
         logging.getLogger('requests').setLevel(logging.WARNING)
-        logging.debug("Connecting to REST server at {servername}".format(**locals()))
-        return HTTPClient(servername)
+        logging.debug("Connecting to REST server at {servername} using token={}".format(bool(token), **locals()))
+        return HTTPClient(servername, token=token)
     else:
         logging.debug("Connecting to local repository {servername}".format(**locals()))
         return FSClient(servername)
@@ -392,6 +411,8 @@ if __name__ == '__main__':
     parser.add_argument("server", help="Server hostname or directory location")
     parser.add_argument("module", help="Module name")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
+    parser.add_argument("--token", "-t", help="Provide auth token"
+                        "(default reads ./.nlpipe_token or NLPIPE_TOKEN")
     action_parser = parser.add_subparsers(dest='action', title='Actions')
     action_parser.required = True
 
@@ -415,15 +436,15 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG if args.pop('verbose', False) else logging.INFO,
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
-    
-    client = get_client(args.pop('server'))
+
+    client = get_client(args.pop('server'), token=args.pop('token', None))
     
     for doc_arg in ('doc', 'result'):
         if args.get(doc_arg) == '-':
             args[doc_arg] = sys.stdin.read()
 
     action = args.pop('action')
-    args = {k:v for (k,v) in args.items() if v}
+    args = {k: v for (k, v) in args.items() if v}
     result = getattr(client, action)(**args)
     if action == "get_task":
         id, doc = result
