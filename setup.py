@@ -25,5 +25,6 @@ setup(
         "amcatclient>=3.4.5",
         "flask-autodoc",
         "KafNafParserPy",
+        "PyJWT",
     ]
 )
