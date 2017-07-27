@@ -304,6 +304,9 @@ class HTTPClient(Client):
     def get(self, url, **kwargs):
         return self.request('get', url, **kwargs)
 
+    def put(self, url, **kwargs):
+        return self.request('put', url, **kwargs)
+
     def status(self, module: str, id: str) -> str:
         url = "{self.server}/api/modules/{module}/{id}".format(**locals())
         res = self.head(url)
