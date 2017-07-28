@@ -23,9 +23,7 @@ from .alpino import POSMAP
 log = logging.getLogger(__name__)
 
 
-class AlpinoNERCParser(Module):
-    name = "alpinonerc"
-
+class AlpinoClient(object):
     def check_status(self):
         alpino_server = os.environ.get('ALPINO_SERVER', 'http://localhost:5002')
         r = requests.get(alpino_server)
@@ -33,16 +31,17 @@ class AlpinoNERCParser(Module):
             raise Exception("No server found at {alpino_server}".format(**locals()))
 
     def process(self, text):
+        modules = ",".join(self.modules)
         alpino_server = os.environ.get('ALPINO_SERVER', 'http://localhost:5002')
-        url = "{alpino_server}/parse/nerc".format(**locals())
+        url = "{alpino_server}/parse/{modules}".format(**locals())
         r = requests.post(url, text.encode("utf-8"))
         r.raise_for_status()
         return r.content.decode("utf-8")
 
     def convert(self, id, result, format):
         assert format == "csv"
-
-        _int = lambda x: None if x is None else int(x)
+        def _int(x):
+            return None if x is None else int(x)
         naf = KafNafParser(BytesIO(result.encode("utf-8")))
 
         deps = {dep.get_to(): (dep.get_function(), dep.get_from())
@@ -69,4 +68,20 @@ class AlpinoNERCParser(Module):
                 w.writerow(row)
         return s.getvalue()
 
+
+class AlpinoNERCParser(AlpinoClient, Module):
+    name = "alpinonerc"
+    modules = ["alpino", "nerc"]
 AlpinoNERCParser.register()
+
+
+class AlpinoCorefPipe(AlpinoClient, Module):
+    name = "alpinocoref"
+    modules = ["alpino", "nerc", "coref"]
+AlpinoCorefPipe.register()
+
+
+class AlpinoCoref(AlpinoClient, Module):
+    name = "corefnl"
+    modules = ["coref"]
+AlpinoCoref.register()
