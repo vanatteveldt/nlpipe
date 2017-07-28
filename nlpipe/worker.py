@@ -87,11 +87,13 @@ if __name__ == '__main__':
     parser.add_argument("modules", nargs="+", help="Class names of module(s) to run")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
     parser.add_argument("--processes", "-p", help="Number of processes per worker", type=int, default=1)
+    parser.add_argument("--token", "-t", help="Provide auth token"
+                        "(default reads ./.nlpipe_token or NLPIPE_TOKEN")
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     
-    client = client.get_client(args.server)
+    client = client.get_client(args.server, token=args.token)
     run_workers(client, args.modules, nprocesses=args.processes)

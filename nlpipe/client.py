@@ -399,6 +399,8 @@ class HTTPClient(Client):
 def get_client(servername, token=None):
     if servername.startswith("http:") or servername.startswith("https:"):
         logging.getLogger('requests').setLevel(logging.WARNING)
+        if not token:
+            token = os.environ.get('NLPIPE_TOKEN', None)
         logging.debug("Connecting to REST server at {servername} using token={}".format(bool(token), **locals()))
         return HTTPClient(servername, token=token)
     else:
