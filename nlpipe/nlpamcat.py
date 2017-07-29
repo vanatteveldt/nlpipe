@@ -92,6 +92,7 @@ def process_pipe(amcat_server: Union[str, AmcatAPI], project: int, articleset: i
         logging.info("Assigning {} articles from {amcat_server} set {project}:{articleset}"
                      .format(len(todo), **locals()))
         for ids in splitlist(todo, itemsperbatch=100):
+            ids = [str(id) for id in ids]
             logging.debug("Assigning {} articles...".format(len(ids)))
             input_files = _nlpipe(nlpipe_server).bulk_result(previous_module, ids)
             input_files = [input_files[str(id)] for id in ids]
@@ -180,12 +181,9 @@ def _get_text(a, to_naf=False, lang='nl'):
             fd.set_section(a['section'])
         naf.header.set_fileDesc(fd)
 
-        pub = Cpublic()
-        if 'url' in a:
-            pub.set_uri(a['url'])
-        if 'uuid' in a:
-            pub.set_publicid(a['uuid'])
-        naf.header.set_publicId(pub)
+        naf.header.set_publicId(a['uuid'])
+        #if 'url' in a:
+        #    naf.header.set_uri(a['url'])
         b = BytesIO()
         naf.dump(b)
         result = b.getvalue().decode("utf-8")
