@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 from collections import Counter
 import re
 from io import BytesIO
@@ -141,7 +142,8 @@ def get_results(amcat_server: Union[str, AmcatAPI], project: int, articleset: in
     status = get_status(amcat_server, project, articleset, nlpipe_server, module)
     toget = [id for (id, status) in status.items() if status == "DONE"]
     kargs = {'format': format} if format else {}
-    return _nlpipe(nlpipe_server).bulk_result(module, toget, **kargs)
+    for batch in splitlist(toget):
+        yield from _nlpipe(nlpipe_server).bulk_result(module, batch, **kargs).items()
 
 
 def _normalize(txt):
@@ -205,6 +207,8 @@ if __name__ == '__main__':
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
     parser.add_argument("--reset-error", "-e", help="Reset errored documents (action=process)", action="store_true")
     parser.add_argument("--reset-started", "-p", help="Reset started documents (action=process)", action="store_true")
+    parser.add_argument("--result-folder", "-o", help="Folder for storing results (one file per document)", action="store_true")
+
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -228,10 +232,16 @@ if __name__ == '__main__':
         results = get_results(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module,
                               format=args.format)
         if args.format == "csv":
-            for i, csv_bytes in enumerate(results.values()):
+            for i, (id, csv_bytes) in enumerate(results):
                 if i != 0 and "\n" in csv_bytes:
                     csv_bytes = csv_bytes.split("\n", 1)[1]
                 print(csv_bytes.strip())
         else:
-            print(json.dumps(results, indent=4))
+            if args.result_folder:
+                for id, result in results:
+                    fn = os.path.join(args.result_folder, id)
+                    logging.debug(fn)
+                    open(fn, 'w').write(result)
+            else:
+                print(json.dumps(results, indent=4))
 
