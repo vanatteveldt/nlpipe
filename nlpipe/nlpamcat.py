@@ -28,15 +28,7 @@ def splitlist(iterable, itemsperbatch=100):
         yield [e for e in group if e is not _fillvalue]
 
 
-def _amcat(amcat_server: Union[str, AmcatAPI]) -> AmcatAPI:
-    return AmcatAPI(amcat_server) if isinstance(amcat_server, str) else amcat_server
-
-
-def _nlpipe(nlpipe_server: Union[str, Client]) -> Client:
-    return get_client(nlpipe_server) if isinstance(nlpipe_server, str) else nlpipe_server
-
-
-def get_ids(amcat_server: Union[str, AmcatAPI], project: int, articleset: int) -> Iterable[int]:
+def get_ids(amcat_server: AmcatAPI, project: int, articleset: int) -> Iterable[int]:
     """
     Get the article ids for this articleset
 
@@ -46,11 +38,11 @@ def get_ids(amcat_server: Union[str, AmcatAPI], project: int, articleset: int) -
     :return: sequence of AmCAT article IDs
     """
     return (x['id'] for x in
-            _amcat(amcat_server).get_articles(project, articleset, columns=['id']))
+            amcat_server.get_articles(project, articleset, columns=['id']))
 
 
-def get_status(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
-               nlpipe_server: Union[str, Client], module: str) -> Mapping[int, str]:
+def get_status(amcat_server: AmcatAPI, project: int, articleset: int,
+               nlpipe_server: Client, module: str) -> Mapping[int, str]:
     """
     Get the status for each article in this article set
 
@@ -63,11 +55,11 @@ def get_status(amcat_server: Union[str, AmcatAPI], project: int, articleset: int
     """
     ids = list(get_ids(amcat_server, project, articleset))
     return {int(id): status
-            for (id, status) in _nlpipe(nlpipe_server).bulk_status(module, ids).items()}
+            for (id, status) in nlpipe_server.bulk_status(module, ids).items()}
 
 
-def process_pipe(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
-                 nlpipe_server: Union[str, Client], module: str, previous_module: str) -> None:
+def process_pipe(amcat_server: AmcatAPI, project: int, articleset: int,
+                 nlpipe_server: Client, module: str, previous_module: str) -> None:
     
     status = get_status(amcat_server, project, articleset, nlpipe_server, module)
 
@@ -94,13 +86,13 @@ def process_pipe(amcat_server: Union[str, AmcatAPI], project: int, articleset: i
         for ids in splitlist(todo, itemsperbatch=100):
             ids = [str(id) for id in ids]
             logging.debug("Assigning {} articles...".format(len(ids)))
-            input_files = _nlpipe(nlpipe_server).bulk_result(previous_module, ids)
+            input_files = nlpipe_server.bulk_result(previous_module, ids)
             input_files = [input_files[str(id)] for id in ids]
-            _nlpipe(nlpipe_server).bulk_process(module, input_files, ids=ids)
+            nlpipe_server.bulk_process(module, input_files, ids=ids)
 
 
-def process(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
-            nlpipe_server: Union[str, Client], module: str,
+def process(amcat_server: AmcatAPI, project: int, articleset: int,
+            nlpipe_server: Client, module: str,
             reset_error: bool=False, reset_started: bool=False, to_naf: bool=False) -> None:
     """
     Process the given documents
@@ -113,6 +105,7 @@ def process(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
     :param reset_started: Re-set started documents to pending
     :param reset_error: Re-assign documents with errors
     :param to_naf: Assign as NAF documents with metadata (otherwise, assign as plain text)
+    :param token: Token to use for authentication
     """
     status = get_status(amcat_server, project, articleset, nlpipe_server, module)
     accept_status = {"UNKNOWN"}
@@ -126,23 +119,23 @@ def process(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
         logging.info("Assigning {} articles from {amcat_server} set {project}:{articleset}"
                      .format(len(todo), **locals()))
         columns = 'headline,text,creator,date,url,uuid,medium,section,page' if args.naf else 'headline,text'
-        for arts in _amcat(amcat_server).get_articles_by_id(articles=todo, columns=columns,
+        for arts in amcat_server.get_articles_by_id(articles=todo, columns=columns,
                                                             page_size=100, yield_pages=True):
             ids = [a['id'] for a in arts]
             texts = [_get_text(a, to_naf=args.naf) for a in arts]
             logging.debug("Assigning {} articles".format(len(ids)))
-            _nlpipe(nlpipe_server).bulk_process(args.module, texts, ids=ids, reset_error=reset_error,
+            nlpipe_server.bulk_process(args.module, texts, ids=ids, reset_error=reset_error,
                                                 reset_pending=reset_started)
     logging.info("Done! Assigned {} articles".format(len(todo)))
 
 
-def get_results(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
-            nlpipe_server: Union[str, Client], module: str, format: str=None):
+def get_results(amcat_server: AmcatAPI, project: int, articleset: int,
+                nlpipe_server: Client, module: str, format: str=None):
     status = get_status(amcat_server, project, articleset, nlpipe_server, module)
     toget = [id for (id, status) in status.items() if status == "DONE"]
     kargs = {'format': format} if format else {}
     for batch in splitlist(toget):
-        yield from _nlpipe(nlpipe_server).bulk_result(module, batch, **kargs).items()
+        yield from nlpipe_server.bulk_result(module, batch, **kargs).items()
 
 
 def _normalize(txt):
@@ -204,7 +197,8 @@ if __name__ == '__main__':
     parser.add_argument("--reset-error", "-e", help="Reset errored documents (action=process)", action="store_true")
     parser.add_argument("--reset-started", "-p", help="Reset started documents (action=process)", action="store_true")
     parser.add_argument("--result-folder", "-o", help="Folder for storing results (one file per document)")
-
+    parser.add_argument("--token", "-t", help="Provide auth token"
+                        "(default reads ./.nlpipe_token or NLPIPE_TOKEN")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
@@ -215,17 +209,20 @@ if __name__ == '__main__':
     logging.debug("Will {args.action} at nlpipe {args.nlpipeserver} all articles "
                   "from {args.amcatserver} set {args.articleset}".format(**locals()))
 
+    amcatserver =AmcatAPI(args.amcatserver)
+    nlpipeserver = get_client(args.nlpipeserver, args.token)
+    
     if args.action == "process":
-        process(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module,
+        process(amcatserver, args.project, args.articleset, nlpipeserver, args.module,
                 args.reset_error, args.reset_started)
     if args.action == "process_pipe":
-        process_pipe(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module, "alpinonerc")
+        process_pipe(amcatserver, args.project, args.articleset, nlpipeserver, args.module, "alpinonerc")
     if args.action == "status":
-        status = get_status(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module)
+        status = get_status(amcatserver, args.project, args.articleset, nlpipeserver, args.module)
         for k, v in Counter(status.values()).items():
             print("{k}: {v}".format(**locals()))
     if args.action == 'result':
-        results = get_results(args.amcatserver, args.project, args.articleset, args.nlpipeserver, args.module,
+        results = get_results(amcatserver, args.project, args.articleset, nlpipeserver, args.module,
                               format=args.format)
         if args.format == "csv":
             for i, (id, csv_bytes) in enumerate(results):
