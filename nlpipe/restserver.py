@@ -320,3 +320,11 @@ if __name__ == '__main__':
         logging.warning("** Authentication disabled! **")
 
     app.run(port=port, host=host, debug=args.debug)
+else:
+    # configure server from defaults / environment
+    nlpipe_dir = os.environ["NLPIPE_DIR"]
+    app.client = FSClient(nlpipe_dir)
+    
+        
+    
+    
