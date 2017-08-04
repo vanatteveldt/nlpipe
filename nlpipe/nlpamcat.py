@@ -96,8 +96,6 @@ def process_pipe(amcat_server: Union[str, AmcatAPI], project: int, articleset: i
             input_files = _nlpipe(nlpipe_server).bulk_result(previous_module, ids)
             input_files = [input_files[str(id)] for id in ids]
             _nlpipe(nlpipe_server).bulk_process(module, input_files, ids=ids)
-    
-                     
 
 
 def process(amcat_server: Union[str, AmcatAPI], project: int, articleset: int,
@@ -207,7 +205,7 @@ if __name__ == '__main__':
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true")
     parser.add_argument("--reset-error", "-e", help="Reset errored documents (action=process)", action="store_true")
     parser.add_argument("--reset-started", "-p", help="Reset started documents (action=process)", action="store_true")
-    parser.add_argument("--result-folder", "-o", help="Folder for storing results (one file per document)", action="store_true")
+    parser.add_argument("--result-folder", "-o", help="Folder for storing results (one file per document)")
 
     args = parser.parse_args()
 
