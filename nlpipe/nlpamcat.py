@@ -235,7 +235,7 @@ if __name__ == '__main__':
         else:
             if args.result_folder:
                 for id, result in results:
-                    fn = os.path.join(args.result_folder, id)
+                    fn = os.path.join(args.result_folder, str(id))
                     logging.debug(fn)
                     open(fn, 'w').write(result)
             else:
