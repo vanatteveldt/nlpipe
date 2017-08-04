@@ -324,7 +324,7 @@ else:
     # configure server from defaults / environment
     nlpipe_dir = os.environ["NLPIPE_DIR"]
     app.client = FSClient(nlpipe_dir)
-    
+    app.use_auth = True
         
     
     
