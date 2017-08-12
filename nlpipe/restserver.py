@@ -322,9 +322,10 @@ if __name__ == '__main__':
     app.run(port=port, host=host, debug=args.debug)
 else:
     # configure server from defaults / environment
-    nlpipe_dir = os.environ["NLPIPE_DIR"]
-    app.client = FSClient(nlpipe_dir)
-    app.use_auth = True
+    if "NLPIPE_DIR" in os.environ:
+        nlpipe_dir = os.environ["NLPIPE_DIR"]
+        app.client = FSClient(nlpipe_dir)
+        app.use_auth = True
         
     
     
