@@ -38,33 +38,43 @@ class AlpinoClient(object):
         r.raise_for_status()
         return r.content.decode("utf-8")
 
-    def convert(self, id, result, format):
-        assert format == "csv"
+    def _csv_header(self):
+        return ["id", "token_id", "offset", "sentence", "para", "word", "term_id",
+                "lemma", "pos", "pos1", "parent", "relation"]
+
+    def _csv_row(self, memo, term, token):
         def _int(x):
             return None if x is None else int(x)
+        pos = term.get_pos()
+        tid = term.get_id()
+        yield token.get_id()
+        yield from (_int(x) for x in (token.get_offset(), token.get_sent(), token.get_para()))
+        yield from (token.get_text(), tid, term.get_lemma(), pos, POSMAP[pos])
+        if tid in memo['deps']:
+            rel, parent = memo['deps'][tid]
+            yield from [parent, rel.split("/")[-1]]
+        else:
+            yield from [None, None]
+
+    def _csv_memo(self, naf):
+        return dict(deps={dep.get_to(): (dep.get_function(), dep.get_from())
+                          for dep in naf.get_dependencies()})
+
+    def convert(self, id, result, format):
+        assert format == "csv"
         naf = KafNafParser(BytesIO(result.encode("utf-8")))
-
-        deps = {dep.get_to(): (dep.get_function(), dep.get_from())
-                for dep in naf.get_dependencies()}
+        memo = self._csv_memo(naf)
         tokendict = {token.get_id(): token for token in naf.get_tokens()}
-
         s = StringIO()
         w = csv.writer(s)
-        w.writerow(["id", "token_id", "offset", "sentence", "para", "word", "term_id",
-                    "lemma", "pos", "pos1", "parent", "relation"])
+        w.writerow(self._csv_header())
         for term in naf.get_terms():
             tokens = [tokendict[id] for id in term.get_span().get_span_ids()]
             for token in tokens:
                 tid = term.get_id()
                 pos = term.get_pos()
                 pos1 = POSMAP[pos]
-                row = [id,  token.get_id(), _int(token.get_offset()), _int(token.get_para()), token.get_text(),
-                       tid, term.get_lemma(), pos, pos1]
-                if tid in deps:
-                    rel, parent = deps[tid]
-                    row += [parent, rel.split("/")[-1]]
-                else:
-                    row += [None, None]
+                row = [id] + list(self._csv_row(memo, term, token))
                 w.writerow(row)
         return s.getvalue()
 
@@ -78,6 +88,43 @@ AlpinoNERCParser.register()
 class AlpinoCorefPipe(AlpinoClient, Module):
     name = "alpinocoref"
     modules = ["alpino", "nerc", "coref"]
+
+    def _csv_header(self):
+        return super()._csv_header() + ["ner_id", "ner_type", "coref_id"]
+
+    def _csv_memo(self, naf):
+        memo = super()._csv_memo(naf)
+        # NER data
+        memo['entities'] = {} # term_id : entity
+        for ent in naf.get_entities():
+            for ref in ent.get_references():
+                for span in ref:
+                    for target in span:
+                        memo['entities'][target.get_id()] = ent
+        # COREF data
+        memo['coref'] = {} # term_id : coref
+        for coref in naf.get_corefs():
+            for span in coref.get_spans():
+                memo['coref'][span.get_id_head()] = coref
+        return memo
+
+    def _csv_row(self, memo, term, token):
+        row = list(super()._csv_row(memo, term, token))
+        # NER data
+        ent = memo['entities'].get(term.get_id())
+        if ent:
+            row += [ent.get_id(), ent.get_type()]
+        else:
+            row += [None, None]
+        coref = memo['coref'].get(term.get_id())
+        if coref:
+            row += [coref.get_id()]
+        else:
+            row += [None]
+
+        return row
+
+
 AlpinoCorefPipe.register()
 
 
