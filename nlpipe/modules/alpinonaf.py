@@ -39,17 +39,17 @@ class AlpinoClient(object):
         return r.content.decode("utf-8")
 
     def _csv_header(self):
-        return ["id", "token_id", "offset", "sentence", "para", "word", "term_id",
-                "lemma", "pos", "pos1", "parent", "relation"]
+        return ["doc_id", "token_id", "para", "sentence", "offset", "token",
+                "lemma", "POS", "pos1", "parent", "relation"]
 
     def _csv_row(self, memo, term, token):
         def _int(x):
             return None if x is None else int(x)
         pos = term.get_pos()
         tid = term.get_id()
-        yield token.get_id()
-        yield from (_int(x) for x in (token.get_offset(), token.get_sent(), token.get_para()))
-        yield from (token.get_text(), tid, term.get_lemma(), pos, POSMAP[pos])
+        yield tid
+        yield from (_int(x) for x in (token.get_para(), token.get_sent(), token.get_offset()))
+        yield from (token.get_text(), term.get_lemma(), pos, POSMAP[pos])
         if tid in memo['deps']:
             rel, parent = memo['deps'][tid]
             yield from [parent, rel.split("/")[-1]]
@@ -90,7 +90,7 @@ class AlpinoCorefPipe(AlpinoClient, Module):
     modules = ["alpino", "nerc", "coref"]
 
     def _csv_header(self):
-        return super()._csv_header() + ["ner_id", "ner_type", "coref_id"]
+        return super()._csv_header() + ["ner_id", "NER", "coref_id"]
 
     def _csv_memo(self, naf):
         memo = super()._csv_memo(naf)

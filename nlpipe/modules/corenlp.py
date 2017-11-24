@@ -52,11 +52,12 @@ class CoreNLPParser(CoreNLPBase):
 
         s = StringIO()
         w = csv.writer(s)
-        w.writerow(["doc", "sentence", "id", "offset", "word", "lemma", "POS", "pos1", "ner", "relation", "parent"])
+        w.writerow(["doc_id", "sentence", "token_id", "offset", "token", "lemma", "POS", "pos1", "NER",
+                    "relation", "parent"])
 
         parents = {}  # sentence, child.id : (rel, parent.id)
         for sent in doc.sentences:
-            if sent.collapsed_ccprocessed_dependencies:
+            if sent.collapsed_cqcprocessed_dependencies:
                 for dep in sent.collapsed_ccprocessed_dependencies.links:
                     if dep.type != 'root':
                         parents[sent.id, dep.dependent.idx] = (dep.type, dep.governor.idx)
