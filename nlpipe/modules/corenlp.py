@@ -57,7 +57,7 @@ class CoreNLPParser(CoreNLPBase):
 
         parents = {}  # sentence, child.id : (rel, parent.id)
         for sent in doc.sentences:
-            if sent.collapsed_cqcprocessed_dependencies:
+            if sent.collapsed_ccprocessed_dependencies:
                 for dep in sent.collapsed_ccprocessed_dependencies.links:
                     if dep.type != 'root':
                         parents[sent.id, dep.dependent.idx] = (dep.type, dep.governor.idx)
