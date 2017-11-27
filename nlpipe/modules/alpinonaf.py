@@ -45,14 +45,17 @@ class AlpinoClient(object):
     def _csv_row(self, memo, term, token):
         def _int(x):
             return None if x is None else int(x)
+        def _id_int(x):
+            """Convert term ids ('t_12') into integer values (12)"""
+            return int(x.replace("t_", ""))
         pos = term.get_pos()
         tid = term.get_id()
-        yield tid
+        yield _id_int(tid)
         yield from (_int(x) for x in (token.get_para(), token.get_sent(), token.get_offset()))
         yield from (token.get_text(), term.get_lemma(), pos, POSMAP[pos])
         if tid in memo['deps']:
             rel, parent = memo['deps'][tid]
-            yield from [parent, rel.split("/")[-1]]
+            yield from [_id_int(parent), rel.split("/")[-1]]
         else:
             yield from [None, None]
 
