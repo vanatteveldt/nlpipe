@@ -119,8 +119,9 @@ def process(amcat_server: AmcatAPI, project: int, articleset: int,
         logging.info("Assigning {} articles from {amcat_server} set {project}:{articleset}"
                      .format(len(todo), **locals()))
         columns = 'headline,text,creator,date,url,uuid,medium,section,page' if args.naf else 'headline,text'
-        for arts in amcat_server.get_articles_by_id(articles=todo, columns=columns,
+        for page in amcat_server.get_articles_by_id(articles=todo, columns=columns,
                                                             page_size=100, yield_pages=True):
+            args = page['results']
             ids = [a['id'] for a in arts]
             texts = [_get_text(a, to_naf=args.naf) for a in arts]
             logging.debug("Assigning {} articles".format(len(ids)))

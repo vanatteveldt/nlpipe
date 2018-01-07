@@ -22,7 +22,7 @@ setup(
         "requests",
         "pynlpl",
         "corenlp_xml>=1.0.4",
-        "amcatclient>=3.4.5",
+        "amcatclient>=3.4.9",
         "flask-autodoc",
         "KafNafParserPy",
         "PyJWT",
