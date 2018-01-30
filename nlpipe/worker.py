@@ -19,18 +19,24 @@ class Worker(Process):
 
     sleep_timeout = 1
 
-    def __init__(self, client, module):
+    def __init__(self, client, module, quit=False):
         """
         :param client: a Client object to connect to the NLP Server
+        :param module: The module to perform work on
+        :param quit: if True, quit if no jobs are found; if False, poll server every second.
         """
         super().__init__()
         self.client = client
         self.module = module
+        self.quit = quit
 
     def run(self):
         while True:
             id, doc = self.client.get_task(self.module.name)
             if id is None:
+                if self.quit:
+                    logging.info("No jobs for {self.module.name}, quitting!".format(**locals()))
+                    break
                 time.sleep(self.sleep_timeout)
                 continue
             logging.info("Received task {self.module.name}/{id} ({n} bytes)".format(n=len(doc), **locals()))
@@ -56,12 +62,13 @@ def _import(name):
     return result
 
 
-def run_workers(client: Client, modules: Iterable[str], nprocesses:int=1) -> Iterable[Worker]:
+def run_workers(client: Client, modules: Iterable[str], nprocesses:int=1, quit:bool=False) -> Iterable[Worker]:
     """
     Run the given workers as separate processes
     :param client: a nlpipe.client.Client object
     :param modules: names of the modules (module name or fully qualified class name)
     :param nprocesses: Number of processes per module
+    :param quit: If True, workers stop when no jobs are present; if False, they poll the server every second.
     """
     # import built-in workers
     import nlpipe.modules
@@ -74,7 +81,7 @@ def run_workers(client: Client, modules: Iterable[str], nprocesses:int=1) -> Ite
             module = get_module(module_class)
         for i in range(1, nprocesses+1):
             logging.debug("[{i}/{nprocesses}] Starting worker {module}".format(**locals()))
-            Worker(client=client, module=module).start()
+            Worker(client=client, module=module, quit=quit).start()
         result.append(module)
 
     logging.info("Workers active and waiting for input")
@@ -87,6 +94,7 @@ if __name__ == '__main__':
     parser.add_argument("modules", nargs="+", help="Class names of module(s) to run")
     parser.add_argument("--verbose", "-v", help="Verbose (debug) output", action="store_true", default=False)
     parser.add_argument("--processes", "-p", help="Number of processes per worker", type=int, default=1)
+    parser.add_argument("--quit", "-q", help="Quit if no jobs are available", action="store_true", default=False)
     parser.add_argument("--token", "-t", help="Provide auth token"
                         "(default reads ./.nlpipe_token or NLPIPE_TOKEN")
 
@@ -96,4 +104,4 @@ if __name__ == '__main__':
                         format='[%(asctime)s %(name)-12s %(levelname)-5s] %(message)s')
     
     client = client.get_client(args.server, token=args.token)
-    run_workers(client, args.modules, nprocesses=args.processes)
+    run_workers(client, args.modules, nprocesses=args.processes, quit=args.quit)
