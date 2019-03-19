@@ -9,7 +9,6 @@ import logging
 import jwt
 from flask import Flask, request, make_response, Response, abort, jsonify
 from flask.templating import render_template
-from flask_autodoc.autodoc import Autodoc
 
 from nlpipe.client import FSClient
 from nlpipe.module import UnknownModuleError, get_module, known_modules
@@ -46,8 +45,6 @@ def check_auth(f):
 
 app = Flask('NLPipe', template_folder=os.path.dirname(__file__))
 
-
-auto = Autodoc(app)
 
 STATUS_CODES = {
     'UNKNOWN': 404,
@@ -93,14 +90,8 @@ def index():
     return render_template('index.html', **locals())
 
 
-@app.route('/apidoc')
-def doc():
-    return auto.html()
-
-
 @app.route('/api/modules/<module>/', methods=['POST'])
 @check_auth
-@auto.doc()
 def post_task(module):
     """
     POST a new task to the NLPipe server.
@@ -125,7 +116,6 @@ def post_task(module):
 
 @app.route('/api/modules/<module>/<id>', methods=['HEAD'])
 @check_auth
-@auto.doc()
 def task_status(module, id):
     """
     HEAD gets the status of a task as HTTP Status code.
@@ -142,7 +132,6 @@ def task_status(module, id):
 
 @app.route('/api/modules/<module>/<id>', methods=['GET'])
 @check_auth
-@auto.doc()
 def result(module, id):
     """
     GET the processed result of a task.
@@ -166,7 +155,6 @@ def result(module, id):
 
 @app.route('/api/modules/<module>/', methods=['GET'])
 @check_auth
-@auto.doc()
 def get_task(module):
     """
     GET a task to process.
@@ -186,7 +174,6 @@ def get_task(module):
 
 @app.route('/api/modules/<module>/<id>', methods=['PUT'])
 @check_auth
-@auto.doc()
 def put_results(module, id):
     """
     PUT the results of processing.
@@ -207,7 +194,6 @@ def put_results(module, id):
 
 @app.route('/api/modules/<module>/bulk/status', methods=['POST'])
 @check_auth
-@auto.doc()
 def bulk_status(module):
     """
     Bulk method: POST a json list of IDs to get status information from.
@@ -227,7 +213,6 @@ def bulk_status(module):
 
 @app.route('/api/modules/<module>/bulk/result', methods=['POST'])
 @check_auth
-@auto.doc()
 def bulk_result(module):
     """
     Bulk method: POST a json list of IDs to get results for.
@@ -248,7 +233,6 @@ def bulk_result(module):
 
 @app.route('/api/modules/<module>/bulk/process', methods=['POST'])
 @check_auth
-@auto.doc()
 def bulk_process(module):
     """
     Bulk method: POST a json list or {id: text} dict containing texts to process
