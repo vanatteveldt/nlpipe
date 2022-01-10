@@ -11,7 +11,7 @@ setup(
     packages=["nlpipe", "nlpipe.modules"],
     include_package_data=True,
     zip_safe=False,
-    keywords = ["NLP", "pipelining"],
+    keywords=["NLP", "pipelining"],
     classifiers=[
         "Intended Audience :: Science/Research",
         "License :: OSI Approved :: MIT License",
@@ -25,5 +25,6 @@ setup(
         "amcatclient>=3.4.9",
         "KafNafParserPy",
         "PyJWT",
+        "nose"
     ]
 )

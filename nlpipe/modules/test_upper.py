@@ -20,4 +20,5 @@ class TestUpper(Module):
             return json.dumps({"id": id, "status": "OK", "result": result})
         super().convert(result, format)
 
+
 TestUpper.register()

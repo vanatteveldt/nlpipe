@@ -17,8 +17,8 @@ import logging
 
 from corenlp_xml.document import Document
 
-class CoreNLPBase(Module):
 
+class CoreNLPBase(Module):
 
     def __init__(self, server=None):
         if server is None:
@@ -37,6 +37,7 @@ class CoreNLPBase(Module):
         if res.status_code != 200:
             raise Exception("Error calling corenlp at {url}: {res.status_code}\n{res.content}".format(**locals()))
         return res.content.decode("utf-8")
+
 
 class CoreNLPParser(CoreNLPBase):
     name = "corenlp_parse"
@@ -92,7 +93,8 @@ class CoreNLPLemmatizer(CoreNLPBase):
                 w.writerow([id, sent.id, t.character_offset_begin, t.word, t.lemma,
                             t.pos, POSMAP[t.pos], t.ner])
         return s.getvalue()
-    
+
+
 CoreNLPLemmatizer.register()
 CoreNLPParser.register()
 

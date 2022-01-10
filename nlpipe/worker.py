@@ -5,19 +5,20 @@ import logging
 from typing import Iterable
 
 from nlpipe import client
-from nlpipe.client import Client
+from nlpipe.clients.ClientInterface import ClientInterface as Client
 from nlpipe.module import get_module
 
 from multiprocessing import Process
 from configparser import SafeConfigParser
 from pydoc import locate
 
+
 class Worker(Process):
     """
     Base class for NLP workers.
     """
 
-    sleep_timeout = 1
+    sleep_timeout = 5  # check the tasks every 5 seconds
 
     def __init__(self, client, module, quit=False):
         """
@@ -86,7 +87,8 @@ def run_workers(client: Client, modules: Iterable[str], nprocesses:int=1, quit:b
 
     logging.info("Workers active and waiting for input")
     return result
-    
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
