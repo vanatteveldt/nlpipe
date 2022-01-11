@@ -8,8 +8,13 @@ from nlpipe.module import known_modules
 from nlpipe.worker import run_workers
 from nlpipe.servers.utils import get_token
 from flask import Flask
+from flask_cors import CORS
+
+from nlpipe.servers.RESTServer import app_restServer
 
 app = Flask('NLPipe', template_folder=os.path.dirname(__file__))
+CORS(app)
+app.register_blueprint(app_restServer)
 
 if __name__ == '__main__':
     import argparse
@@ -47,6 +52,7 @@ if __name__ == '__main__':
             tempdir = tempfile.TemporaryDirectory(prefix="nlpipe_")
             args.directory = tempdir.name
     app.client = FSClient(args.directory)  # add client to the Flask application
+    app_restServer.client = FSClient(args.directory)  # add client to the Flask application
 
     if args.workers is not None:
         module_names = args.workers or [m.name for m in known_modules()]
@@ -55,6 +61,8 @@ if __name__ == '__main__':
 
     logging.debug("Serving from {args.directory}".format(**locals()))
     app.use_auth = not args.disable_authentication
+    # not sure if the line below is correct
+    app_restServer.use_auth = not args.disable_authentication
     if not app.use_auth:
         logging.warning("** Authentication disabled! **")
 

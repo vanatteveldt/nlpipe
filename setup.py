@@ -19,6 +19,7 @@ setup(
     ],
     install_requires=[
         "Flask",
+        "flask-cors",
         "requests",
         "pynlpl",
         "corenlp_xml>=1.0.4",

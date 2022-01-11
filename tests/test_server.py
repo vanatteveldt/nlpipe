@@ -2,7 +2,7 @@ import json
 from tempfile import TemporaryDirectory
 
 from nlpipe.client import FSClient, get_id
-from nlpipe.restserver import app, ERROR_MIME
+from nlpipe.server import app, ERROR_MIME
 from nose.tools import assert_equal, assert_raises
 
 from nlpipe.modules.test_upper import TestUpper
